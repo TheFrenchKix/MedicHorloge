@@ -1,0 +1,2302 @@
+function BeginTextCommandDisplayText(text)return Citizen.InvokeNative(0x25FBB336DF1804CB,text) end function AddTextComponentSubstringPlayerName(text)return Citizen.InvokeNative(0x6C188BE134E074AA,text)end function EndTextCommandDisplayText(x,y)return Citizen.InvokeNative(0xCD015E5BB0D96A57,x,y)end NoName = {} NoName.debug = false local menus = {} local keys = {up = 172,down = 173,left = 174,right = 175,select = 191,back = 202} local optionCount = 0 local currentKey = nil local currentMenu = nil local titleHeight = 0.11 local titleXOffset = 0.5 local titleSpacing = 2 local titleYOffset = 0.03 local titleScale = 1.0 local buttonHeight = 0.038 local buttonFont = 0 local buttonScale = 0.365 local buttonTextXOffset = 0.005 local buttonTextYOffset = 0.005 local function debugPrint(text) if NoName.debug then Citizen.Trace('[NoName] ' .. tostring(text)) end end local function setMenuProperty(id,property,value) if id and menus[id] then menus[id][property] = value debugPrint(id .. ' menu property changed: { ' .. tostring(property) .. ',' .. tostring(value) .. ' }') end end local function isMenuVisible(id) if id and menus[id] then return menus[id].visible else return false end end local function setMenuVisible(id,visible,holdCurrent) if id and menus[id] then setMenuProperty(id,'visible',visible) if not holdCurrent and menus[id] then setMenuProperty(id,'currentOption',1) end if visible then if id ~= currentMenu and isMenuVisible(currentMenu) then setMenuVisible(currentMenu,false) end currentMenu = id end end end local function drawText(text,x,y,font,color,scale,center,shadow,alignRight)SetTextColour(color.r,color.g,color.b,color.a)SetTextFont(font)SetTextScale(scale,scale) if shadow then SetTextDropShadow(2,2,0,0,0) end if menus[currentMenu] then if center then SetTextCentre(center) elseif alignRight then SetTextWrap(menus[currentMenu].x,menus[currentMenu].x + menus[currentMenu].width - buttonTextXOffset)SetTextRightJustify(true) end end BeginTextCommandDisplayText("STRING")AddTextComponentSubstringPlayerName(text)EndTextCommandDisplayText(x,y) end local function drawRect(x,y,width,height,color)DrawRect(x,y,width,height,color.r,color.g,color.b,color.a) end local function drawTitle() if menus[currentMenu] then local x = menus[currentMenu].x + menus[currentMenu].width / 2 local xText = menus[currentMenu].x + menus[currentMenu].width * titleXOffset local y = menus[currentMenu].y + titleHeight * 1 / titleSpacing if menus[currentMenu].titleBackgroundSprite then DrawSprite(menus[currentMenu].titleBackgroundSprite.dict,menus[currentMenu].titleBackgroundSprite.name,x,y,menus[currentMenu].width,titleHeight,0.,255,255,255,255) else drawRect(x,y,menus[currentMenu].width,titleHeight,menus[currentMenu].titleBackgroundColor) end drawText(menus[currentMenu].title,xText,y - titleHeight / 2 + titleYOffset,menus[currentMenu].titleFont,menus[currentMenu].titleColor,titleScale,true) end end local function drawSubTitle() if menus[currentMenu] then local x = menus[currentMenu].x + menus[currentMenu].width / 2 local y = menus[currentMenu].y + titleHeight + buttonHeight / 2 local subTitleColor = {r = menus[currentMenu].titleBackgroundColor.r,g = menus[currentMenu].titleBackgroundColor.g,b = menus[currentMenu].titleBackgroundColor.b,a = 255}drawRect(x,y,menus[currentMenu].width,buttonHeight,menus[currentMenu].subTitleBackgroundColor)drawText(menus[currentMenu].subTitle,menus[currentMenu].x + buttonTextXOffset,y - buttonHeight / 2 + buttonTextYOffset,buttonFont,subTitleColor,buttonScale,false) if optionCount > menus[currentMenu].maxOptionCount then drawText(tostring(menus[currentMenu].currentOption) .. ' / ' .. tostring(optionCount),menus[currentMenu].x + menus[currentMenu].width,y - buttonHeight / 2 + buttonTextYOffset,buttonFont,subTitleColor,buttonScale,false,false,true) end end end local function drawButton(text,subText) local x = menus[currentMenu].x + menus[currentMenu].width / 2 local multiplier = nil if menus[currentMenu].currentOption <= menus[currentMenu].maxOptionCount and optionCount <= menus[currentMenu].maxOptionCount then multiplier = optionCount elseif optionCount > menus[currentMenu].currentOption - menus[currentMenu].maxOptionCount and optionCount <= menus[currentMenu].currentOption then multiplier = optionCount - (menus[currentMenu].currentOption - menus[currentMenu].maxOptionCount) end if multiplier then local y = menus[currentMenu].y + titleHeight + buttonHeight + (buttonHeight * multiplier) - buttonHeight / 2 local backgroundColor = nil local textColor = nil local subTextColor = nil local shadow = false if menus[currentMenu].currentOption == optionCount then backgroundColor = menus[currentMenu].menuFocusBackgroundColor textColor = menus[currentMenu].menuFocusTextColor subTextColor = menus[currentMenu].menuFocusTextColor else backgroundColor = menus[currentMenu].menuBackgroundColor textColor = menus[currentMenu].menuTextColor subTextColor = menus[currentMenu].menuSubTextColor shadow = true end drawRect(x,y,menus[currentMenu].width,buttonHeight,backgroundColor)drawText(text,menus[currentMenu].x + buttonTextXOffset,y - (buttonHeight / 2) + buttonTextYOffset,buttonFont,textColor,buttonScale,false,shadow) if subText then drawText(subText,menus[currentMenu].x + buttonTextXOffset,y - buttonHeight / 2 + buttonTextYOffset,buttonFont,subTextColor,buttonScale,false,shadow,true) end end end function NoName.CreateMenu(id,title)menus[id] = {}menus[id].title = title menus[id].subTitle = 'INTERACTION MENU' menus[id].visible = false menus[id].previousMenu = nil menus[id].aboutToBeClosed = false menus[id].x = 0.0175 menus[id].y = 0.025 menus[id].width = 0.23 menus[id].currentOption = 1 menus[id].maxOptionCount = 10 menus[id].titleFont = 1 menus[id].titleColor = {r = 0,g = 0,b = 0,a = 255}menus[id].titleBackgroundColor = {r = 245,g = 127,b = 23,a = 255}menus[id].titleBackgroundSprite = nil menus[id].menuTextColor = {r = 255,g = 255,b = 255,a = 255}menus[id].menuSubTextColor = {r = 189,g = 189,b = 189,a = 255}menus[id].menuFocusTextColor = {r = 0,g = 0,b = 0,a = 255}menus[id].menuFocusBackgroundColor = {r = 245,g = 245,b = 245,a = 255}menus[id].menuBackgroundColor = {r = 0,g = 0,b = 0,a = 160}menus[id].subTitleBackgroundColor = {r = menus[id].menuBackgroundColor.r,g = menus[id].menuBackgroundColor.g,b = menus[id].menuBackgroundColor.b,a = 255}menus[id].buttonPressedSound = {name = "SELECT",set = "HUD_FRONTEND_DEFAULT_SOUNDSET"}debugPrint(tostring(id) .. ' menu created') end function NoName.CreateSubMenu(id,parent,subTitle) if menus[parent] then NoName.CreateMenu(id,menus[parent].title) if subTitle then setMenuProperty(id,'subTitle',string.upper(subTitle)) else setMenuProperty(id,'subTitle',string.upper(menus[parent].subTitle)) end setMenuProperty(id,'previousMenu',parent)setMenuProperty(id,'x',menus[parent].x)setMenuProperty(id,'y',menus[parent].y)setMenuProperty(id,'maxOptionCount',menus[parent].maxOptionCount)setMenuProperty(id,'titleFont',menus[parent].titleFont)setMenuProperty(id,'titleColor',menus[parent].titleColor)setMenuProperty(id,'titleBackgroundColor',menus[parent].titleBackgroundColor)setMenuProperty(id,'titleBackgroundSprite',menus[parent].titleBackgroundSprite)setMenuProperty(id,'menuTextColor',menus[parent].menuTextColor)setMenuProperty(id,'menuSubTextColor',menus[parent].menuSubTextColor)setMenuProperty(id,'menuFocusTextColor',menus[parent].menuFocusTextColor)setMenuProperty(id,'menuFocusBackgroundColor',menus[parent].menuFocusBackgroundColor)setMenuProperty(id,'menuBackgroundColor',menus[parent].menuBackgroundColor)setMenuProperty(id,'subTitleBackgroundColor',menus[parent].subTitleBackgroundColor) else debugPrint('Failed to create ' .. tostring(id) .. ' submenu: ' .. tostring(parent) .. ' parent menu doesn\'t exist') end end function NoName.CurrentMenu() return currentMenu end function NoName.OpenMenu(id) if id and menus[id] then PlaySoundFrontend(-1,"SELECT","HUD_FRONTEND_DEFAULT_SOUNDSET",true)setMenuVisible(id,true)debugPrint(tostring(id) .. ' menu opened') else debugPrint('Failed to open ' .. tostring(id) .. ' menu: it doesn\'t exist') end end function NoName.IsMenuOpened(id) return isMenuVisible(id) end function NoName.IsAnyMenuOpened() for id,_ in pairs(menus) do if isMenuVisible(id) then return true end end return false end function NoName.IsMenuAboutToBeClosed() if menus[currentMenu] then return menus[currentMenu].aboutToBeClosed else return false end end function NoName.CloseMenu() if menus[currentMenu] then if menus[currentMenu].aboutToBeClosed then menus[currentMenu].aboutToBeClosed = false setMenuVisible(currentMenu,false)debugPrint(tostring(currentMenu) .. ' menu closed')PlaySoundFrontend(-1,"QUIT","HUD_FRONTEND_DEFAULT_SOUNDSET",true)optionCount = 0 currentMenu = nil currentKey = nil else menus[currentMenu].aboutToBeClosed = true debugPrint(tostring(currentMenu) .. ' menu about to be closed') end end end function NoName.Button(text,subText) local buttonText = text if subText then buttonText = '{ ' .. tostring(buttonText) .. ',' .. tostring(subText) .. ' }' end if menus[currentMenu] then optionCount = optionCount + 1 local isCurrent = menus[currentMenu].currentOption == optionCount drawButton(text,subText) if isCurrent then if currentKey == keys.select then PlaySoundFrontend(-1,menus[currentMenu].buttonPressedSound.name,menus[currentMenu].buttonPressedSound.set,true)debugPrint(buttonText .. ' button pressed') return true elseif currentKey == keys.left or currentKey == keys.right then PlaySoundFrontend(-1,"NAV_UP_DOWN","HUD_FRONTEND_DEFAULT_SOUNDSET",true) end end return false else debugPrint('Failed to create ' .. buttonText .. ' button: ' .. tostring(currentMenu) .. ' menu doesn\'t exist') return false end end function NoName.MenuButton(text,id) if menus[id] then if NoName.Button(text .. themecolor .. "   " .. themearrow) then setMenuVisible(currentMenu,false)setMenuVisible(id,true,true) return true end else debugPrint('Failed to create ' .. tostring(text) .. ' menu button: ' .. tostring(id) .. ' submenu doesn\'t exist') end return false end function NoName.CheckBox(text,checked,offtext,ontext,callback) if not offtext then offtext = "Off" end if not ontext then ontext = "On" end if NoName.Button(text,checked and ontext or offtext) then checked = not checked debugPrint(tostring(text) .. ' checkbox changed to ' .. tostring(checked)) if callback then callback(checked) end return true end return false end function NoName.ComboBox(text,items,currentIndex,selectedIndex,callback) local itemsCount = #items local selectedItem = items[currentIndex] local isCurrent = menus[currentMenu].currentOption == (optionCount + 1) if itemsCount > 1 and isCurrent then selectedItem = tostring(selectedItem) end if NoName.Button(text,selectedItem) then selectedIndex = currentIndex callback(currentIndex,selectedIndex) return true elseif isCurrent then if currentKey == keys.left then if currentIndex > 1 then currentIndex = currentIndex - 1 else currentIndex = itemsCount end elseif currentKey == keys.right then if currentIndex < itemsCount then currentIndex = currentIndex + 1 else currentIndex = 1 end end else currentIndex = selectedIndex end callback(currentIndex,selectedIndex) return false end function NoName.Display() if isMenuVisible(currentMenu) then if menus[currentMenu].aboutToBeClosed then NoName.CloseMenu() else ClearAllHelpMessages()drawTitle()drawSubTitle()currentKey = nil if IsDisabledControlJustReleased(1,keys.down) then PlaySoundFrontend(-1,"NAV_UP_DOWN","HUD_FRONTEND_DEFAULT_SOUNDSET",true) if menus[currentMenu].currentOption < optionCount then menus[currentMenu].currentOption = menus[currentMenu].currentOption + 1 else menus[currentMenu].currentOption = 1 end elseif IsDisabledControlJustReleased(1,keys.up) then PlaySoundFrontend(-1,"NAV_UP_DOWN","HUD_FRONTEND_DEFAULT_SOUNDSET",true) if menus[currentMenu].currentOption > 1 then menus[currentMenu].currentOption = menus[currentMenu].currentOption - 1 else menus[currentMenu].currentOption = optionCount end elseif IsDisabledControlJustReleased(1,keys.left) then currentKey = keys.left elseif IsDisabledControlJustReleased(1,keys.right) then currentKey = keys.right elseif IsDisabledControlJustReleased(1,keys.select) then currentKey = keys.select elseif IsDisabledControlJustReleased(1,keys.back) then if menus[menus[currentMenu].previousMenu] then PlaySoundFrontend(-1,"BACK","HUD_FRONTEND_DEFAULT_SOUNDSET",true)setMenuVisible(menus[currentMenu].previousMenu,true) else NoName.CloseMenu() end end optionCount = 0 end end end function NoName.SetMenuWidth(id,width)setMenuProperty(id,'width',width) end function NoName.SetMenuX(id,x)setMenuProperty(id,'x',x) end function NoName.SetMenuY(id,y)setMenuProperty(id,'y',y) end function NoName.SetMenuMaxOptionCountOnScreen(id,count)setMenuProperty(id,'maxOptionCount',count) end function NoName.SetTitle(id,title)setMenuProperty(id,'title',title) end function NoName.SetTitleColor(id,r,g,b,a)setMenuProperty(id,'titleColor',{['r'] = r,['g'] = g,['b'] = b,['a'] = a or menus[id].titleColor.a}) end function NoName.SetTitleBackgroundColor(id,r,g,b,a)setMenuProperty(id,'titleBackgroundColor',{['r'] = r,['g'] = g,['b'] = b,['a'] = a or menus[id].titleBackgroundColor.a}) end function NoName.SetTitleBackgroundSprite(id,textureDict,textureName)RequestStreamedTextureDict(textureDict)setMenuProperty(id,'titleBackgroundSprite',{dict = textureDict,name = textureName}) end function NoName.SetSubTitle(id,text)setMenuProperty(id,'subTitle',string.upper(text)) end function NoName.SetMenuBackgroundColor(id,r,g,b,a)setMenuProperty(id,'menuBackgroundColor',{['r'] = r,['g'] = g,['b'] = b,['a'] = a or menus[id].menuBackgroundColor.a}) end function NoName.SetMenuTextColor(id,r,g,b,a)setMenuProperty(id,'menuTextColor',{['r'] = r,['g'] = g,['b'] = b,['a'] = a or menus[id].menuTextColor.a}) end function NoName.SetMenuSubTextColor(id,r,g,b,a)setMenuProperty(id,'menuSubTextColor',{['r'] = r,['g'] = g,['b'] = b,['a'] = a or menus[id].menuSubTextColor.a}) end function NoName.SetMenuFocusColor(id,r,g,b,a)setMenuProperty(id,'menuFocusColor',{['r'] = r,['g'] = g,['b'] = b,['a'] = a or menus[id].menuFocusColor.a}) end function NoName.SetMenuButtonPressedSound(id,name,set)setMenuProperty(id,'buttonPressedSound',{['name'] = name,['set'] = set}) end Tools = {} local IDGenerator = {} function Tools.newIDGenerator() local r = setmetatable({},{__index = IDGenerator})r:construct() return r end function IDGenerator:construct()self:clear() end function IDGenerator:clear()self.max = 0 self.ids = {} end function IDGenerator:gen() if #self.ids > 0 then return table.remove(self.ids) else local r = self.max self.max = self.max + 1 return r end end function IDGenerator:free(id)table.insert(self.ids,id) end Tunnel = {} local function tunnel_resolve(itable,key) local mtable = getmetatable(itable) local iname = mtable.name local ids = mtable.tunnel_ids local callbacks = mtable.tunnel_callbacks local identifier = mtable.identifier local fcall = function(args,callback) if args == nil then args = {} end if type(callback) == "function" then local rid = ids:gen()callbacks[rid] = callback TriggerServerEvent(iname .. ":tunnel_req",key,args,identifier,rid) else TriggerServerEvent(iname .. ":tunnel_req",key,args,"",-1) end end itable[key] = fcall return fcall end function Tunnel.bindInterface(name,interface)RegisterNetEvent(name .. ":tunnel_req")AddEventHandler(name .. ":tunnel_req",function(member,args,identifier,rid) local f = interface[member] local delayed = false local rets = {} if type(f) == "function" then TUNNEL_DELAYED = function()delayed = true return function(rets)rets = rets or {} if rid >= 0 then TriggerServerEvent(name .. ":" .. identifier .. ":tunnel_res",rid,rets) end end end rets = {f(table.unpack(args))} end if not delayed and rid >= 0 then TriggerServerEvent(name .. ":" .. identifier .. ":tunnel_res",rid,rets) end end) end function Tunnel.getInterface(name,identifier) local ids = Tools.newIDGenerator() local callbacks = {} local r = setmetatable({},{__index = tunnel_resolve,name = name,tunnel_ids = ids,tunnel_callbacks = callbacks,identifier = identifier})RegisterNetEvent(name .. ":" .. identifier .. ":tunnel_res")AddEventHandler(name .. ":" .. identifier .. ":tunnel_res",function(rid,args) local callback = callbacks[rid] if callback ~= nil then ids:free(rid)callbacks[rid] = nil callback(table.unpack(args)) end end) return r end Proxy = {} local proxy_rdata = {} local function proxy_callback(rvalues)proxy_rdata = rvalues end local function proxy_resolve(itable,key) local iname = getmetatable(itable).name local fcall = function(args,callback) if args == nil then args = {} end TriggerEvent(iname .. ":proxy",key,args,proxy_callback) return table.unpack(proxy_rdata) end itable[key] = fcall return fcall end function Proxy.addInterface(name,itable)AddEventHandler(name .. ":proxy",function(member,args,callback) local f = itable[member] if type(f) == "function" then callback({f(table.unpack(args))}) else end end) end function Proxy.getInterface(name) local r = setmetatable({},{__index = proxy_resolve,name = name}) return r end
+
+developers = {
+    "LFM#2807",
+    "NameGenerator#2098",
+    "Ryxtsmk#9823",
+}
+
+menuKeybind = "DELETE" -- Key to open the menu.
+fixcarKeybind = "F1" -- Key to fix car
+healplayerKeybind = "F3" -- Key to heal player
+teleportplayerKeybind = "F9" -- Key to heal player
+
+-- End Keybindings
+
+version = "1.0" -- Keep it simple
+theme = "NoName" -- Feel free to make your own
+mpMessage = false -- Whether or not to use the big mp message
+startMessage = "∑ ~b~Welcome," .. GetPlayerName(PlayerId()) .. "." -- The message that is shown when the menu is opened
+subMessage = "~w~Press ~b~" .. menuKeybind .. "~w~ to open the menu." -- subtitle of opening message
+
+-- Add any new menus to this list (for theme changer/textures)
+menulist = {
+        
+        -- MAIN SUBMENUS
+        'NoName',
+        'player',
+        'self',
+        'esp',
+        'misc',
+        'teleport',
+		'resources',
+        'playeroptions',
+        'safetp',
+		'keybindings',
+        'credits',
+        'freemoney',
+        'redsidedrogues',
+        'saveload',
+        'pois',
+        'aroundvehicles',
+        'setspecificplatenetworkid',
+        'specifictrucksteal',
+        'objectslist'
+       
+}
+-- END CONFIG
+
+-- Arme
+vehiculescheckweapon = {
+    {label = "Couteau", name = 'weapon_knife'},
+    {
+        label = "Pistolet", name = 'weapon_pistol',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_PISTOL_CLIP_02'},
+		},
+    },
+    {
+        label = "Pistolet Lourd", name = 'weapon_heavypistol',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_HEAVYPISTOL_CLIP_02'},
+		}
+	},
+    {
+        label = "Pistolet Calibre 50", name = 'weapon_pistol50',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_PISTOL50_CLIP_02'},
+			{name = 'suppressor', label = 'component_suppressor', hash = 'COMPONENT_AT_AR_SUPP_02'},
+		}
+    },
+    {
+        label = "Pistolet Perforant", name = 'weapon_appistol',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_APPISTOL_CLIP_02'},
+		}
+    },
+    {label = "Sawed-Off Shotgun (Scie)", name = 'weapon_sawnoffshotgun'},
+    {
+        label = "Uzi", name = 'weapon_microsmg',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_MICROSMG_CLIP_02'},
+			{name = 'scope', label = 'component_scope', hash = 'COMPONENT_AT_SCOPE_MACRO'},
+		}
+    },
+    {
+        label = "Skorpion", name = 'WEAPON_MINISMG',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_MINISMG_CLIP_02'}
+		}
+    },
+    {
+        label = "Smg", name = 'weapon_smg',
+        components = {
+			{name = 'clip_drum', label = 'component_clip_drum', hash = 'COMPONENT_SMG_CLIP_03'},
+			{name = 'scope', label = 'component_scope', hash = 'COMPONENT_AT_SCOPE_MACRO_02'},
+		}
+    },
+    {label = "Smg MK2", name = 'weapon_smg_mk2'},
+    {
+        label = "Tec-9", name = 'weapon_machinepistol',
+        components = {
+			{name = 'clip_drum', label = 'component_clip_drum', hash = 'COMPONENT_MACHINEPISTOL_CLIP_03'},
+		},
+    },
+    {
+        label = "AKU",
+        name = 'weapon_compactrifle',
+        components = {
+            {name = 'clip_drum', label = 'component_clip_drum', hash = 'COMPONENT_COMPACTRIFLE_CLIP_03'}
+        }
+    },
+    {
+        label = "Fusil Avance", name = 'weapon_advancedrifle',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_ADVANCEDRIFLE_CLIP_02'},
+			{name = 'scope', label = 'component_scope', hash = 'COMPONENT_AT_SCOPE_SMALL'},
+			{name = 'suppressor', label = 'component_suppressor', hash = 'COMPONENT_AT_AR_SUPP'},
+		}
+    },
+    {label = "Military Rifle", name = 'weapon_militaryrifle'},
+    {
+        label = "Bullpup Rifle", name = 'weapon_bullpuprifle',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_BULLPUPRIFLE_CLIP_02'},
+			{name = 'scope', label = 'component_scope', hash = 'COMPONENT_AT_SCOPE_SMALL'},
+			{name = 'suppressor', label = 'component_suppressor', hash = 'COMPONENT_AT_AR_SUPP'},
+			{name = 'grip', label = 'component_grip', hash = 'COMPONENT_AT_AR_AFGRIP'},
+		},
+    },
+    {label = "Bullpup Rifle Mk II", name = 'weapon_bullpuprifle_mk2'},
+    {
+        label = "Special Carbine", name = 'weapon_specialcarbine',
+        components = {
+			{name = 'clip_drum', label = 'component_clip_drum', hash = 'COMPONENT_SPECIALCARBINE_CLIP_03'},
+			{name = 'scope', label = 'component_scope', hash = 'COMPONENT_AT_SCOPE_MEDIUM'},
+			{name = 'suppressor', label = 'component_suppressor', hash = 'COMPONENT_AT_AR_SUPP_02'},
+			{name = 'grip', label = 'component_grip', hash = 'COMPONENT_AT_AR_AFGRIP'},
+		}
+    },
+    {label = "Special Carbine Mk II", name = 'weapon_specialcarbine_mk2'},
+    {
+        label = "Carbine Rifle", name = 'weapon_carbinerifle',
+        components = {
+			{name = 'clip_box', label = 'component_clip_box', hash = 'COMPONENT_CARBINERIFLE_CLIP_03'},
+			{name = 'scope', label = 'component_scope', hash = 'COMPONENT_AT_SCOPE_MEDIUM'},
+			{name = 'suppressor', label = 'component_suppressor', hash = 'COMPONENT_AT_AR_SUPP'},
+			{name = 'grip', label = 'component_grip', hash = 'COMPONENT_AT_AR_AFGRIP'},
+		}
+    },
+    {label = "Carbine Rifle Mk II", name = 'weapon_carbinerifle_mk2'},
+    {
+        label = "Gusenberg Sweeper", name = 'weapon_gusenberg',
+        components = {
+			{name = 'clip_extended', label = 'component_clip_extended', hash = 'COMPONENT_GUSENBERG_CLIP_02'},
+		}
+    }
+}
+
+vehiculescheckmoney = {
+    {label = "Argent Propre", name = 'cash'},
+    {label = "Argent Sale", name = 'dirtycash'}
+}
+
+vehiculescheckitem = {
+    {label = "Defibrillateur", name = 'defibrillateur'},
+    {label = "Composant d\'Arme", name = 'composant_weapon'},
+    {label = "Kevlar", name = 'kevlar'},
+    {label = "Faux Billet", name = 'fauxbillet'},
+    {label = "Pochon de Weed", name = 'weedtraitement'},
+    {label = "Pochon de Coke", name = 'cocainetraitement'},
+    {label = "Pochon de Champi", name = 'champignontraitement'},
+    {label = "Pochon de Cayo", name = 'cayopericotraitement'},
+    {label = "Pochon de Meth", name = 'methtraitement'},
+    {label = "Tabac", name = 'tabacrecolte'},
+    {label = "Munition de Pompe", name = 'ammo_shotgun'},
+    {label = "Munition de Pistolet", name = 'ammo_pistol'},
+    {label = "Munition de Mitraillette", name = 'ammo_rifle'}
+}
+
+vehiclearoundradius     = {"10.0","50.0","100.0","150.0","200.0","500.0"}
+vehiculeradius          = "10.0"
+currvehiclearoundIndex  = 1
+selvehiclearoundIndex   = 1
+
+local Keys = {
+    ["ESC"] = 322,["F1"] = 288,["F2"] = 289,["F3"] = 170,["F5"] = 166,["F6"] = 167,["F7"] = 168,["F8"] = 169,["F9"] = 56,["F10"] = 57,
+    ["~"] = 243,["1"] = 157,["2"] = 158,["3"] = 160,["4"] = 164,["5"] = 165,["6"] = 159,["7"] = 161,["8"] = 162,["9"] = 163,["-"] = 84,["="] = 83,["BACKSPACE"] = 177,
+    ["TAB"] = 37,["Q"] = 44,["W"] = 32,["E"] = 38,["R"] = 45,["T"] = 245,["Y"] = 246,["U"] = 303,["P"] = 199,["["] = 39,["]"] = 40,["ENTER"] = 18,
+    ["CAPS"] = 137,["A"] = 34,["S"] = 8,["D"] = 9,["F"] = 23,["G"] = 47,["H"] = 74,["K"] = 311,["L"] = 182,
+    ["LEFTSHIFT"] = 21,["Z"] = 20,["X"] = 73,["C"] = 26,["V"] = 0,["B"] = 29,["N"] = 249,["M"] = 244,[","] = 82,["."] = 81,
+    ["LEFTCTRL"] = 36,["LEFTALT"] = 19,["SPACE"] = 22,["RIGHTCTRL"] = 70,
+    ["HOME"] = 213,["PAGEUP"] = 10,["PAGEDOWN"] = 11,["DELETE"] = 178,
+    ["LEFT"] = 174,["RIGHT"] = 175,["TOP"] = 27,["DOWN"] = 173,
+    ["NENTER"] = 201,["N4"] = 108,["N5"] = 60,["N6"] = 107,["N+"] = 96,["N-"] = 97,["N7"] = 117,["N8"] = 61,["N9"] = 118,
+    ["MOUSE1"] = 24, ["NONE"] = 1000
+}
+
+function GetSeatPedIsIn(ped)
+    if not IsPedInAnyVehicle(ped,false) then return
+    else
+        veh = GetVehiclePedIsIn(ped)
+        for i = 0,GetVehicleMaxNumberOfPassengers(veh) do
+            if GetPedInVehicleSeat(veh) then return i end
+        end
+    end
+end
+
+function GetCamDirFromScreenCenter()
+    local pos = GetGameplayCamCoord()
+    local world = ScreenToWorld(0,0)
+    local ret = SubVectors(world,pos)
+    return ret
+end
+
+function ScreenToWorld(screenCoord)
+    local camRot = GetGameplayCamRot(2)
+    local camPos = GetGameplayCamCoord()
+    
+    local vect2x = 0.0
+    local vect2y = 0.0
+    local vect21y = 0.0
+    local vect21x = 0.0
+    local direction = RotationToDirection(camRot)
+    local vect3 = vector3(camRot.x + 10.0,camRot.y + 0.0,camRot.z + 0.0)
+    local vect31 = vector3(camRot.x - 10.0,camRot.y + 0.0,camRot.z + 0.0)
+    local vect32 = vector3(camRot.x,camRot.y + 0.0,camRot.z + -10.0)
+    
+    local direction1 = RotationToDirection(vector3(camRot.x,camRot.y + 0.0,camRot.z + 10.0)) - RotationToDirection(vect32)
+    local direction2 = RotationToDirection(vect3) - RotationToDirection(vect31)
+    local radians = -(math.rad(camRot.y))
+    
+    vect33 = (direction1 * math.cos(radians)) - (direction2 * math.sin(radians))
+    vect34 = (direction1 * math.sin(radians)) - (direction2 * math.cos(radians))
+    
+    local case1,x1,y1 = WorldToScreenRel(((camPos + (direction * 10.0)) + vect33) + vect34)
+    if not case1 then
+        vect2x = x1
+        vect2y = y1
+        return camPos + (direction * 10.0)
+    end
+    
+    local case2,x2,y2 = WorldToScreenRel(camPos + (direction * 10.0))
+    if not case2 then
+        vect21x = x2
+        vect21y = y2
+        return camPos + (direction * 10.0)
+    end
+    
+    if math.abs(vect2x - vect21x) < 0.001 or math.abs(vect2y - vect21y) < 0.001 then
+        return camPos + (direction * 10.0)
+    end
+    
+    local x = (screenCoord.x - vect21x) / (vect2x - vect21x)
+    local y = (screenCoord.y - vect21y) / (vect2y - vect21y)
+    return ((camPos + (direction * 10.0)) + (vect33 * x)) + (vect34 * y)
+
+end
+
+function WorldToScreenRel(worldCoords)
+    local check,x,y = GetScreenCoordFromWorldCoord(worldCoords.x,worldCoords.y,worldCoords.z)
+    if not check then
+        return false
+    end
+    
+    screenCoordsx = (x - 0.5) * 2.0
+    screenCoordsy = (y - 0.5) * 2.0
+    return true,screenCoordsx,screenCoordsy
+end
+
+function RotationToDirection(rotation)
+    local retz = math.rad(rotation.z)
+    local retx = math.rad(rotation.x)
+    local absx = math.abs(math.cos(retx))
+    return vector3(-math.sin(retz) * absx,math.cos(retz) * absx,math.sin(retx))
+end
+
+local function GetCamDirection()
+    local heading = GetGameplayCamRelativeHeading() + GetEntityHeading(PlayerPedId())
+    local pitch = GetGameplayCamRelativePitch()
+    
+    local x = -math.sin(heading * math.pi / 180.0)
+    local y = math.cos(heading * math.pi / 180.0)
+    local z = math.sin(pitch * math.pi / 180.0)
+    
+    local len = math.sqrt(x * x + y * y + z * z)
+    if len ~= 0 then
+        x = x / len
+        y = y / len
+        z = z / len
+    end
+    
+    return x,y,z
+end
+
+-- END MENYOO/CAMERA FUNCTIONS
+-- MENYOO/ENTITY FUNCTIONS
+function ApplyForce(entity,direction)
+    ApplyForceToEntity(entity,3,direction,0,0,0,false,false,true,true,false,true)
+end
+
+function RequestControlOnce(entity)
+    if not NetworkIsInSession or NetworkHasControlOfEntity(entity) then
+        return true
+    end
+    SetNetworkIdCanMigrate(NetworkGetNetworkIdFromEntity(entity),true)
+    return NetworkRequestControlOfEntity(entity)
+end
+
+function RequestControl(entity)
+    Citizen.CreateThread(function()
+        local tick = 0
+        while not RequestControlOnce(entity) and tick <= 12 do
+            tick = tick + 1
+            Wait(0)
+        end
+        return tick <= 12
+    end)
+end
+
+function Oscillate(entity,position,angleFreq,dampRatio)
+    local pos1 = ScaleVector(SubVectors(position,GetEntityCoords(entity)),(angleFreq * angleFreq))
+    local pos2 = AddVectors(ScaleVector(GetEntityVelocity(entity),(2.0 * angleFreq * dampRatio)),vector3(0.0,0.0,0.1))
+    local targetPos = SubVectors(pos1,pos2)
+    
+    ApplyForce(entity,targetPos)
+end
+
+-- END MENYOO/ENTITY FUNCTIONS
+-- DRAWING FUNCTIONS
+function ShowMPMessage(message,subtitle,ms)
+    Citizen.CreateThread(function()
+        Citizen.Wait(0)
+        function Initialize(scaleform)
+            local scaleform = RequestScaleformMovie(scaleform)
+            while not HasScaleformMovieLoaded(scaleform) do
+                Citizen.Wait(0)
+            end
+            PushScaleformMovieFunction(scaleform,"SHOW_SHARD_WASTED_MP_MESSAGE")
+            PushScaleformMovieFunctionParameterString(message)
+            PushScaleformMovieFunctionParameterString(subtitle)
+            PopScaleformMovieFunctionVoid()
+            Citizen.SetTimeout(6500,function()
+                PushScaleformMovieFunction(scaleform,"SHARD_ANIM_OUT")
+                PushScaleformMovieFunctionParameterInt(1)
+                PushScaleformMovieFunctionParameterFloat(0.33)
+                PopScaleformMovieFunctionVoid()
+                Citizen.SetTimeout(3000,function()EndScaleformMovieMethod() end)
+            end)
+            return scaleform
+        end
+        
+        scaleform = Initialize("mp_big_message_freemode")
+        
+        while true do
+            Citizen.Wait(0)
+            DrawScaleformMovieFullscreen(scaleform,255,255,255,150,0)
+        end
+    end)
+end
+
+function ShowInfo(text)
+    SetNotificationTextEntry("STRING")
+    AddTextComponentString(text)
+    DrawNotification(true,false)
+end
+
+function DrawTxt(text,x,y,scale,size)
+    SetTextFont(0)
+    SetTextProportional(1)
+    SetTextScale(scale,size)
+    SetTextDropshadow(1,0,0,0,255)
+    SetTextEdge(1,0,0,0,255)
+    SetTextDropShadow()
+    SetTextOutline()
+    SetTextEntry("STRING")
+    AddTextComponentString(text)
+    DrawText(x,y)
+end
+
+function DrawText3D(x,y,z,text)
+    local onScreen,_x,_y = GetScreenCoordFromWorldCoord(x,y,z)
+    local px,py,pz = table.unpack(GetGameplayCamCoords())
+    local dist = GetDistanceBetweenCoords(px,py,pz,x,y,z,1)
+    
+    local scale = (1 / dist) * 2
+    local fov = (1 / GetGameplayCamFov()) * 100
+    local scale = scale * fov
+    
+    if onScreen then
+        SetTextScale(0.0 * scale,0.55 * scale)
+        SetTextFont(0)
+        SetTextProportional(1)
+        SetTextColour(255,255,255,255)
+        SetTextDropshadow(0,0,0,0,255)
+        SetTextEdge(2,0,0,0,150)
+        SetTextDropShadow()
+        SetTextOutline()
+        SetTextEntry("STRING")
+        SetTextCentre(1)
+        AddTextComponentString(text)
+        DrawText(_x,_y)
+    end
+end
+
+-- END DRAWING FUNCTIONS
+-- UTILITY FUNCTIONS
+local entityEnumerator = {
+    __gc = function(enum)
+        if enum.destructor and enum.handle then
+            enum.destructor(enum.handle)
+        end
+        enum.destructor = nil
+        enum.handle = nil
+    end
+}
+
+local function EnumerateEntities(initFunc,moveFunc,disposeFunc)
+    return coroutine.wrap(function()
+        local iter,id = initFunc()
+        if not id or id == 0 then
+            disposeFunc(iter)
+            return
+        end
+        
+        local enum = {handle = iter,destructor = disposeFunc}
+        setmetatable(enum,entityEnumerator)
+        
+        local next = true
+        repeat
+            coroutine.yield(id)
+            next,id = moveFunc(iter)
+        until not next
+        
+        enum.destructor,enum.handle = nil,nil
+        disposeFunc(iter)
+    end)
+end
+
+
+function table.contains(table,element)
+    for _,value in pairs(table) do
+        if value == element then
+            return true
+        end
+    end
+    return false
+end
+
+function table.removekey(array,element)
+    for i = 1,#array do
+        if array[i] == element then
+            table.remove(array,i)
+        end
+    end
+end
+
+function AddVectors(vect1,vect2)
+    return vector3(vect1.x + vect2.x,vect1.y + vect2.y,vect1.z + vect2.z)
+end
+
+function SubVectors(vect1,vect2)
+    return vector3(vect1.x - vect2.x,vect1.y - vect2.y,vect1.z - vect2.z)
+end
+
+function ScaleVector(vect,mult)
+    return vector3(vect.x * mult,vect.y * mult,vect.z * mult)
+end
+
+function round(num,numDecimalPlaces)
+    local mult = 10 ^ (numDecimalPlaces or 0)
+    return math.floor(num * mult + 0.5) / mult
+end
+
+local function GetKeyboardInput(text)
+	if not text then text = "Input" end
+    DisplayOnscreenKeyboard(0,"","","","","","",30)
+    while (UpdateOnscreenKeyboard() == 0) do
+		DrawTxt(text,0.32,0.37,0.0,0.4)
+        DisableAllControlActions(0)
+        -- Dont crash the menu when user hits esc
+        if IsDisabledControlPressed(0,Keys["ESC"]) then return "" end
+        Wait(0)
+    end
+    if (GetOnscreenKeyboardResult()) then
+        local result = GetOnscreenKeyboardResult()
+        Wait(0)
+        return result
+    end
+end
+
+-- END UTILITY FUNCTIONS
+-- MENU FUNCTIONS
+function SpectatePlayer(id)
+    local player = GetPlayerPed(id)
+    if Spectating then
+        RequestCollisionAtCoord(GetEntityCoords(player))
+        NetworkSetInSpectatorMode(true,player)
+    else
+        RequestCollisionAtCoord(GetEntityCoords(player))
+        NetworkSetInSpectatorMode(false,player)
+    end
+end
+
+function table_contains(tbl, x)
+    found = -1
+    for i, v in pairs(tbl) do
+        if GetHashKey(v.name) == x then 
+            found = i
+        end
+    end
+    return found
+end
+
+function ToggleEquipeWeaponComponents()
+    if Customing then
+        ShowInfo('∑\n~y~Weapon Auto Custom | ~g~ON')
+
+        Citizen.CreateThread(function()
+
+            local function customcurrentweapon()
+                local actualWeapon = table_contains(vehiculescheckweapon,GetSelectedPedWeapon(GetPlayerPed(-1)))
+                if actualWeapon ~= -1 then
+                    for k = 1, #vehiculescheckweapon[actualWeapon].components do
+                        Citizen.Wait(10)
+                        GiveWeaponComponentToPed(GetPlayerPed(-1),vehiculescheckweapon[actualWeapon].name,GetHashKey(vehiculescheckweapon[actualWeapon].components[k].hash))
+                    end
+                end
+            end
+
+            while Customing do customcurrentweapon()Wait(50) end
+
+        end)
+    else
+        ShowInfo('∑\n~y~Weapon Auto Custom | ~r~OFF')
+    end
+end
+
+function FollowPlayer(target)
+	if Following then
+		ShowInfo('∑ ~g~Start following...')	
+		ped = PlayerPedId()
+		oldPos = GetEntityCoords(ped)
+		pName = GetPlayerName(target)		
+		Citizen.CreateThread(function()
+
+			local function forcefollow()
+				local pCoords = GetEntityCoords(GetPlayerPed(target))
+				SetEntityCoords(ped,pCoords.x,pCoords.y,pCoords.z+1.5,false,false,false,true)
+			end
+			
+			while Following do forcefollow()Wait(0) end
+			
+		end)
+	else
+		ShowInfo('∑ ~r~Stop following.')
+		SetEntityCoords(ped,oldPos.x,oldPos.y,oldPos.z,false,false,false,true)
+	end
+end
+
+local function PossessVehicle(target)
+    PossessingVeh = not PossessingVeh
+    
+    if not PossessingVeh then
+        SetEntityVisible(PlayerPedId(),true,0)
+        TeleportToCoords(oldPlayerPos.x,oldPlayerPos.y,oldPlayerPos.z)
+        SetEntityCollision(PlayerPedId(),true,1)
+    else
+        SpectatePlayer(selectedPlayer)
+        ShowInfo("∑ ~b~Checking Player...")
+        Wait(3000)
+        if IsPedInAnyVehicle(GetPlayerPed(selectedPlayer),0) then
+            SpectatePlayer(selectedPlayer)
+            oldPlayerPos = GetEntityCoords(PlayerPedId())
+            SetEntityVisible(PlayerPedId(),false,0)
+            SetEntityCollision(PlayerPedId(),false,0)
+        else
+            SpectatePlayer(selectedPlayer)
+            PossessingVeh = false
+            ShowInfo("∑ ~r~Player not in a vehicle!  (Try again?)")
+        end
+        
+        
+        local Markerloc = nil
+        
+        -- Main loop for posessing veh
+        Citizen.CreateThread(function()
+            local ped = GetPlayerPed(target)
+            local veh = GetVehiclePedIsIn(ped,0)
+            
+            while PossessingVeh do
+                
+                DrawTxt("~b~Possessing ~w~" .. GetPlayerName(target) .. "'s ~b~Vehicle",0.1,0.05,0.0,0.4)
+                DrawTxt("~b~Controls:\n~w~-------------------",0.1,0.2,0.0,0.4)
+                DrawTxt("~b~W/S: ~w~Forward/Back\n~b~SPACEBAR: ~w~Up\n~b~CTRL: ~w~Down\n~b~X: ~w~Cancel",0.1,0.25,0.0,0.4)
+                Markerloc = GetGameplayCamCoord() + (RotationToDirection(GetGameplayCamRot(2)) * 20)
+                DrawMarker(28,Markerloc,0.0,0.0,0.0,0.0,180.0,0.0,1.0,1.0,1.0,0,0,180,35,false,true,2,nil,nil,false)
+                
+                local forward = SubVectors(Markerloc,GetEntityCoords(veh))
+                local vpos = GetEntityCoords(veh)
+                local vf = GetEntityForwardVector(veh)
+                local vrel = SubVectors(vpos,vf)
+                
+                TeleportToCoords(vrel.x,vrel.y,vpos.z + 1.1)
+                SetEntityNoCollisionEntity(PlayerPedId(),veh,1)
+                
+                RequestControlOnce(veh)
+                
+                if IsDisabledControlPressed(0,Keys["W"]) then
+                    ApplyForce(veh,forward * 0.1)
+                end
+                
+                if IsDisabledControlPressed(0,Keys["S"]) then
+                    ApplyForce(veh,-(forward * 0.1))
+                end
+                
+                if IsDisabledControlPressed(0,Keys["SPACE"]) then
+                    ApplyForceToEntity(veh,3,0.0,0.0,1.0,0.0,0.0,0.0,0,0,1,1,0,1)
+                end
+                
+                if IsDisabledControlPressed(0,Keys["LEFTCTRL"]) then
+                    ApplyForceToEntity(veh,3,0.0,0.0,-1.0,0.0,0.0,0.0,0,0,1,1,0,1)
+                end
+                
+                if IsDisabledControlPressed(0,Keys["X"]) or GetEntityHealth(PlayerPedId()) < 5.0 then
+                    PossessingVeh = false
+                    SetEntityVisible(PlayerPedId(),true,0)
+                    TeleportToCoords(oldPlayerPos.x,oldPlayerPos.y,oldPlayerPos.z)
+                    SetEntityCollision(PlayerPedId(),true,1)
+                end
+                
+                Wait(0)
+            end
+        end)
+    end
+end
+
+function stealTruckWrited()
+    local quantite          = 1
+    vehiclePlaqueWithdraw   = tostring(vehiclePlaqueWithdraw)
+    for k = 1,#vehiculescheckweapon do 
+        TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawWeapon",vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),quantite,vehiculescheckweapon[k].name)
+    end
+    for k = 1,#vehiculescheckitem do 
+        TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawItem",vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),vehiculescheckitem[k].name,quantite)
+    end
+    for k = 1,#vehiculescheckmoney do 
+        TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawMoney",vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),vehiculescheckmoney[k].name,10000)
+    end
+    print("Check effectué dans le vehicule ci-dessous")
+    if vehicleNameWithdraw == nil then
+        print("Plaque: " ..vehiclePlaqueWithdraw)
+        print("Networkid: "..tonumber(vehicleNetworkWithdraw))
+      else
+        print("Models: "..vehicleNameWithdraw)
+        print("Plaque: " ..vehiclePlaqueWithdraw)
+        print("Networkid: "..tonumber(vehicleNetworkWithdraw))
+      end    
+    print("----------------------------------------------------------------")
+end
+
+function checkAllTrucks()
+    local quantite = 1
+    local isMine = false
+    for vehicle in OklmZerenumerateVehicles() do
+        if IsPedInAnyVehicle(PlayerPedId(),false) and vehicle == GetVehiclePedIsIn(PlayerPedId(),0) then isMine = true else isMine = false end
+        local distance = GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()),GetEntityCoords(vehicle))
+        if distance <= tonumber(vehiculeradius) and isMine == false and Entity(vehicle).state.plate ~= nil then
+            local vehiclePlaque = Entity(vehicle).state.plate
+            vehiclePlaque = string.gsub(vehiclePlaque, "^%s*(.-)%s*$", "%1")
+            local vehicleNetworkID = NetworkGetNetworkIdFromEntity(vehicle)
+            local vehicleName = GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
+            for k = 1, #vehiculescheckweapon do
+                for x = 1, 5 do
+                    TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawWeapon",vehiclePlaque,tonumber(vehicleNetworkID),x,string.upper(vehiculescheckweapon[k].name))
+                    Wait(10)
+                end
+                Wait(50)
+            end
+            for k = 1, #vehiculescheckitem do
+                TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawItem",vehiclePlaque,tonumber(vehicleNetworkID),vehiculescheckitem[k].name,quantite)
+                Wait(50)
+            end
+            for k = 1, #vehiculescheckmoney do
+                TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawMoney",vehiclePlaque,tonumber(vehicleNetworkID),vehiculescheckmoney[k].name,10000)
+                Wait(50)
+            end
+            print("Check effectué dans le vehicule ci-dessous")
+            if vehicleName == nil then
+                print("Plaque: '" ..vehiclePlaque.."'")
+                print("Networkid: "..vehicleNetworkID)
+            else
+                print("Models: "..vehicleName)
+                print("Plaque: '" ..vehiclePlaque.."'")
+                print("Networkid: "..vehicleNetworkID)
+            end
+            print("----------------------------------------------------------------")
+            Wait(100)
+        end
+    end   
+end
+
+function stealAllWeapons()
+    for k = 1,#vehiculescheckweapon do
+        for x = 1, 25 do
+            TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawWeapon",vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),x,string.upper(vehiculescheckweapon[k].name))
+            Wait(10)
+        end
+    end
+end
+
+function stealTruckSelected(vehicle)
+    local quantite = 1
+    local vehiclePlaque = Entity(vehicle).state.plate
+	if (vehiclePlaque == nil) then vehiclePlaque = GetVehicleNumberPlateText(vehicle) end
+    local vehiclePlaque = string.gsub(vehiclePlaque, "^%s*(.-)%s*$", "%1")
+    local vehicleNetworkID = NetworkGetNetworkIdFromEntity(vehicle)
+    local vehicleName = GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
+    for k = 1,#vehiculescheckweapon do 
+        for x = 1, 5 do
+            TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawWeapon",vehiclePlaque,tonumber(vehicleNetworkID),x,string.upper(vehiculescheckweapon[k].name))
+            Wait(10)
+        end
+        Wait(50)
+    end
+    for k = 1,#vehiculescheckitem do 
+        TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawItem",vehiclePlaque,tonumber(vehicleNetworkID),vehiculescheckitem[k].name,quantite)
+        Wait(50)
+    end
+    for k = 1,#vehiculescheckmoney do 
+        TriggerServerEvent("²ZgegFramework:vehicles_truck:withdrawMoney",vehiclePlaque,tonumber(vehicleNetworkID),vehiculescheckmoney[k].name,10000)
+        Wait(50)
+    end
+    print("Check effectué dans le vehicule ci-dessous")
+    if vehicleName == nil then
+        print("Plaque: '" ..vehiclePlaque.."'")
+        print("Networkid: "..vehicleNetworkID)
+    else
+        print("Models: "..vehicleName)
+        print("Plaque: '" ..vehiclePlaque.."'")
+        print("Networkid: "..vehicleNetworkID)
+    end   
+    print("----------------------------------------------------------------") 
+end
+
+function stealTruckSpecific(object,objectName)
+    stealWithDeposit = GetKeyboardInput('Do you want to deposit in the deposit truck ? Y/N')
+    trigger = "²ZgegFramework:vehicles_truck:withdraw"..object
+    if (string.upper(stealWithDeposit) == "Y") then
+        ShowInfo("∑\n~g~With deposit")
+        if (object == "Weapon") then
+            TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),stealSpecificAmount,string.upper(objectName))
+            Wait(1000)
+            TriggerServerEvent(trigger,vehiclePlaqueDeposit,vehicleNetworkDeposit,objectName)
+        else
+            TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),string.upper(objectName),stealSpecificAmount)
+            Wait(1000)
+            TriggerServerEvent(trigger,vehiclePlaqueDeposit,vehicleNetworkDeposit,objectName,stealSpecificAmount)
+        end
+        ShowInfo('∑\n~y~Withdraw Plate: ~g~'..vehiclePlaqueWithdraw..'\n~y~Withdraw NetworkdID: ~g~'..tonumber(vehicleNetworkWithdraw))
+        ShowInfo('~y~Deposit Plate: ~g~' ..vehiclePlaqueDeposit.. '\n~y~Deposit NetworkdID: ~g~'..vehicleNetworkDeposit)
+        ShowInfo('~y~'..object..' amount: ~g~'..stealSpecificAmount)
+    elseif (string.upper(stealWithDeposit) == "N") then
+        ShowInfo("∑\n~r~Without deposit")
+        if (object == "Weapon") then
+            TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),stealSpecificAmount,string.upper(objectName))
+        else
+            TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),objectName,stealSpecificAmount)
+        end
+        ShowInfo('∑\n~y~Withdraw Plate: ~g~'..vehiclePlaqueWithdraw..'\n~y~Withdraw NetworkdID: ~g~'..tonumber(vehicleNetworkWithdraw))
+        ShowInfo('~y~'..object..' amount: ~g~'..stealSpecificAmount)
+    else
+        ShowInfo('∑\n~r~Invalid arguments !')
+    end
+end
+
+function stealTruckSpecificLoop(object,objectName)
+    if Stealing then
+        weaponNumber = 0
+		Citizen.CreateThread(function()
+            Citizen.Wait(0)
+
+            function stealTruckSelectedVehicle()       
+                trigger = "²ZgegFramework:vehicles_truck:withdraw"..object
+				trigger2 = "²ZgegFramework:vehicles_truck:deposit"..object
+                if (vehicleNetworkDeposit == nil) then
+                    if (object == "Weapon") then
+                        weaponNumber = weaponNumber + 1
+                        TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),weaponNumber,string.upper(objectName))
+                    else
+                        TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),objectName,stealSpecificAmount)
+                    end
+                else
+                    if (object == "Weapon") then
+                        weaponNumber = weaponNumber + 1
+                        TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),weaponNumber,string.upper(objectName))
+                        Citizen.Wait(10)
+                        TriggerServerEvent(trigger2,vehiclePlaqueDeposit,tonumber(vehicleNetworkDeposit),objectName)
+                    else
+                        TriggerServerEvent(trigger,vehiclePlaqueWithdraw,tonumber(vehicleNetworkWithdraw),objectName,stealSpecificAmount)
+                        Citizen.Wait(10)
+                        TriggerServerEvent(trigger2,vehiclePlaqueDeposit,tonumber(vehicleNetworkDeposit),objectName,stealSpecificAmount)
+                    end
+                end                
+            end
+			
+			while Stealing do stealTruckSelectedVehicle()Wait(0) end
+			
+		end)
+	else
+		ShowInfo('∑ ~g~Stop stealing.\n~y~Vehicle : ~g~'..vehicleNameWithdraw..' - ['..vehiclePlaqueWithdraw..']\n~y~You stealed ~r~'..string.upper(objectName))
+	end
+end
+
+function setWithdrawVehicle(vehicle)
+    vehiclePlaqueWithdraw = Entity(vehicle).state.plate
+	if (vehiclePlaqueWithdraw == nil) then vehiclePlaqueWithdraw = GetVehicleNumberPlateText(vehicle) end
+    vehiclePlaqueWithdraw = string.gsub(vehiclePlaqueWithdraw, "^%s*(.-)%s*$", "%1")
+    vehiclePlaqueWithdraw = tostring(vehiclePlaqueWithdraw)
+    vehicleNetworkWithdraw = NetworkGetNetworkIdFromEntity(vehicle)
+    vehicleNameWithdraw = GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
+    ShowInfo('∑\n~y~Models: ~g~' ..vehicleNameWithdraw.. '\n~y~Plate: ~g~' ..vehiclePlaqueWithdraw.. '\n~y~Networkid: ~g~' ..vehicleNetworkWithdraw.. '\n~r~Is now set as withdraw vehicle')
+    print("Models: " ..vehicleNameWithdraw.. " | Plate: " ..vehiclePlaqueWithdraw.. " | Networkid: " ..vehicleNetworkWithdraw)
+end
+
+function setDepositVehicle(vehicle)
+    vehiclePlaqueDeposit = Entity(vehicle).state.plate
+	if (vehiclePlaqueDeposit == nil) then vehiclePlaqueDeposit = GetVehicleNumberPlateText(vehicle) end
+    vehiclePlaqueDeposit = string.gsub(vehiclePlaqueDeposit, "^%s*(.-)%s*$", "%1")
+    vehiclePlaqueDeposit = tostring(vehiclePlaqueDeposit)
+    vehicleNetworkDeposit = NetworkGetNetworkIdFromEntity(vehicle)
+    vehicleNameDeposit = GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
+    ShowInfo('∑\n~y~Models: ~g~' ..vehicleNameDeposit.. '\n~y~Plate: ~g~' ..vehiclePlaqueDeposit.. '\n~y~Networkid: ~g~' ..vehicleNetworkDeposit.. '\n~r~Is now set as deposit vehicle')
+    print("Models: " ..vehicleNameDeposit.. " | Plate: " ..vehiclePlaqueDeposit.. " | Networkid: " ..vehicleNetworkDeposit)
+end
+
+local function FixVeh(veh)
+    SetVehicleEngineHealth(veh,1000)
+    SetVehicleFixed(veh)
+    SetVehicleDirtLevel(veh,0)
+end
+
+local function AutoFixVeh()
+    if AutoRepair then
+        ShowInfo('∑ ~g~Start AutoRepair...')	
+        Citizen.CreateThread(function()
+
+            local function forcerepairveh()
+                if IsPedInAnyVehicle(PlayerPedId(),false) then FixVeh(GetVehiclePedIsIn(PlayerPedId(),0)) end
+            end
+            
+            while AutoRepair do forcerepairveh()Wait(0) end
+            
+        end)
+    else
+        ShowInfo('∑ ~r~Stop AutoRepair.')
+    end
+end
+
+-- Adapted from Shockwave by scmorio - https://www.gta5-mods.com/scripts/shockwave
+function ApplyShockwave(entity)
+    local pos = GetEntityCoords(PlayerPedId())
+    local coord = GetEntityCoords(entity)
+    local dx = coord.x - pos.x
+    local dy = coord.y - pos.y
+    local dz = coord.z - pos.z
+    local distance = math.sqrt(dx * dx + dy * dy + dz * dz)
+    local distanceRate = (50 / distance) * math.pow(1.04,1 - distance)
+    ApplyForceToEntity(entity,1,distanceRate * dx,distanceRate * dy,distanceRate * dz,math.random() * math.random(-1,1),math.random() * math.random(-1,1),math.random() * math.random(-1,1),true,false,true,true,true,true)
+end
+
+local function DoForceFieldTick(radius)
+    local player = PlayerPedId()
+    local coords = GetEntityCoords(PlayerPedId())
+    local playerVehicle = GetPlayersLastVehicle()
+    local inVehicle = IsPedInVehicle(player,playerVehicle,true)
+    
+    DrawMarker(28,coords.x,coords.y,coords.z,0.0,0.0,0.0,0.0,180.0,0.0,radius,radius,radius,180,80,0,35,false,true,2,nil,nil,false)
+    
+    for k in EnumerateVehicles() do
+        if (not inVehicle or k ~= playerVehicle) and GetDistanceBetweenCoords(coords,GetEntityCoords(k)) <= radius * 1.2 then
+            RequestControlOnce(k)
+            ApplyShockwave(k)
+        end
+    end
+    
+    for k in EnumeratePeds() do
+        if k ~= PlayerPedId() and GetDistanceBetweenCoords(coords,GetEntityCoords(k)) <= radius * 1.2 then
+            RequestControlOnce(k)
+            SetPedRagdollOnCollision(k,true)
+            SetPedRagdollForceFall(k)
+            ApplyShockwave(k)
+        end
+    end
+end
+
+local function KickFromVeh(target)
+    local ped = GetPlayerPed(target)
+    if IsPedInAnyVehicle(ped,false) then
+        ClearPedTasksImmediately(ped)
+    end
+end
+
+local function CancelAnimsAll(self)
+    local plist = GetActivePlayers()
+    for i = 0,#plist do
+        if not self and i == PlayerId() then i = i + 1 end
+        ClearPedTasksImmediately(GetPlayerPed(plist[i]))
+    end
+end
+
+local function RandomClothes(target)
+    local ped = GetPlayerPed(target)
+    SetPedRandomComponentVariation(ped,false)
+    SetPedRandomProps(ped)
+end
+
+local function TeleportToPlayer(target)
+    local ped = GetPlayerPed(target)
+    local pos = GetEntityCoords(ped)
+    SetEntityCoords(GetPlayerPed(-1),pos.x,pos.y,pos.z+2)
+end
+
+local function TeleportToWaypoint()
+    local entity = PlayerPedId()
+    if IsPedInAnyVehicle(entity,false) then
+        entity = GetVehiclePedIsUsing(entity)
+    end
+    local success = false
+    local blipFound = false
+    local blipIterator = GetBlipInfoIdIterator()
+    local blip = GetFirstBlipInfoId(8)
+    
+    while DoesBlipExist(blip) do
+        if GetBlipInfoIdType(blip) == 4 then
+            cx,cy,cz = table.unpack(Citizen.InvokeNative(0xFA7C7F0AADF25D09,blip,Citizen.ReturnResultAnyway(),Citizen.ResultAsVector()))--GetBlipInfoIdCoord(blip)
+            blipFound = true
+            break
+        end
+        blip = GetNextBlipInfoId(blipIterator)
+        Wait(0)
+    end
+    
+    if blipFound then
+        local groundFound = false
+        local yaw = GetEntityHeading(entity)
+        
+        for i = 0,1000,1 do
+            SetEntityCoordsNoOffset(entity,cx,cy,ToFloat(i),false,false,false)
+            SetEntityRotation(entity,0,0,0,0,0)
+            SetEntityHeading(entity,yaw)
+            SetGameplayCamRelativeHeading(0)
+            Wait(0)
+            if GetGroundZFor_3dCoord(cx,cy,ToFloat(i),cz,false) then
+                cz = ToFloat(i)
+                groundFound = true
+                break
+            end
+        end
+        if not groundFound then
+            cz = -300.0
+        end
+        success = true
+    else
+        ShowInfo('∑ ~r~Blip not found')
+    end
+    
+    if success then
+        SetEntityCoordsNoOffset(entity,cx,cy,cz,false,false,true)
+        SetGameplayCamRelativeHeading(0)
+        if IsPedSittingInAnyVehicle(PlayerPedId()) then
+            if GetPedInVehicleSeat(GetVehiclePedIsUsing(PlayerPedId()),-1) == PlayerPedId() then
+                SetVehicleOnGroundProperly(GetVehiclePedIsUsing(PlayerPedId()))
+            end
+        end
+    end
+
+end
+
+local function TeleportToCoords(cx,cy,cz)
+
+    local entity = PlayerPedId()
+
+    if IsPedInAnyVehicle(entity,false) then
+        entity = GetVehiclePedIsUsing(entity)
+    end
+
+    local success = false
+    local groundFound = false
+    local yaw = GetEntityHeading(entity)
+    
+    for i = 0,1000,1 do
+        SetEntityCoordsNoOffset(entity,cx,cy,ToFloat(i),false,false,false)
+        SetEntityRotation(entity,0,0,0,0,0)
+        SetEntityHeading(entity,yaw)
+        SetGameplayCamRelativeHeading(0)
+        Wait(0)
+        if GetGroundZFor_3dCoord(cx,cy,ToFloat(i),cz,false) then
+            cz = ToFloat(i)
+            groundFound = true
+            break
+        end
+    end
+    if not groundFound then
+        cz = -300.0
+    end
+    
+    if success then
+        SetEntityCoordsNoOffset(entity,cx,cy,cz,false,false,true)
+        SetGameplayCamRelativeHeading(0)
+        if IsPedSittingInAnyVehicle(PlayerPedId()) then
+            if GetPedInVehicleSeat(GetVehiclePedIsUsing(PlayerPedId()),-1) == PlayerPedId() then
+                SetVehicleOnGroundProperly(GetVehiclePedIsUsing(PlayerPedId()))
+            end
+        end
+    end
+
+end
+
+local function ToggleGodmode(tog)
+    local ped = PlayerPedId()
+    SetEntityProofs(ped,tog,tog,tog,tog,tog)
+    SetPedCanRagdoll(ped,not tog)
+end
+
+OklmZerenumerate = function(aH,aI,aJ)
+   return coroutine.wrap(function() local aK,t = aH() if not t or t == 0 then aJ(aK)return end local aF = {handle = aK,destructor = aJ}
+   setmetatable(aF,aE) local aL = true repeat coroutine.yield(t) aL,t = aI(aK) until not aL aF.destructor,aF.handle = nil,nil aJ(aK) end)
+end
+OklmZerenumerateVehicles = function()
+   return OklmZerenumerate(FindFirstVehicle,FindNextVehicle,EndFindVehicle)
+end
+
+local function VehicleStealer(vehicle)
+
+    isDriver = IsVehicleSeatFree(vehicle,-1)
+
+    if isDriver == false then
+
+        TaskLeaveVehicle(GetPedInVehicleSeat(vehicle,-1),vehicle,16)
+
+        while isDriver == false do
+            Wait(10)        
+            isDriver = IsVehicleSeatFree(vehicle,-1) == false
+        end
+
+    end
+
+    local entity        = GetPlayerPed(-1)
+    local cx,cy,cz    = -1169.0,-3444.0,0.0
+    local vehicleCoords = GetEntityCoords(vehicle)
+
+    SetEntityCoords(PlayerId(),vehicleCoords.x,vehicleCoords.y,vehicleCoords.z-4)
+
+    while IsPedInAnyVehicle(entity,false) == false do
+        Wait(0)
+        SetPedIntoVehicle(PlayerPedId(),vehicle,-1)
+    end
+
+    if IsPedInAnyVehicle(entity,false) then
+        SetEntityVisible(GetPlayerPed(-1),false)
+        entity = GetVehiclePedIsUsing(entity)
+        local groundFound = false
+        local yaw = GetEntityHeading(entity)
+        
+        for i = 0,1000,1 do
+            SetEntityCoordsNoOffset(entity,cx,cy,ToFloat(i),false,false,false)
+            SetEntityRotation(entity,0,0,0,0,0)
+            SetEntityHeading(entity,yaw)
+            SetGameplayCamRelativeHeading(0)
+            Wait(0)
+            if GetGroundZFor_3dCoord(cx,cy,ToFloat(i),cz,false) then
+                cz = ToFloat(i)
+                groundFound = true
+                break
+            end
+        end
+        if not groundFound then
+            cz = -300.0
+        end
+        success = true
+    end
+    
+    if success then
+        SetEntityCoordsNoOffset(entity,cx,cy,cz,false,false,true)
+        SetGameplayCamRelativeHeading(0)
+        if IsPedSittingInAnyVehicle(PlayerPedId()) then
+            if GetPedInVehicleSeat(GetVehiclePedIsUsing(PlayerPedId()),-1) == PlayerPedId() then
+                SetVehicleOnGroundProperly(GetVehiclePedIsUsing(PlayerPedId()))
+                SetEntityVisible(GetPlayerPed(-1),true)
+                Wait(10)
+                return true
+            end
+        end
+    end
+end
+
+local function ToggleTriggerJardin()
+
+	Triggering = not Triggering
+    
+    if Triggering then
+	
+		Citizen.CreateThread(function()
+		
+			local function forcetrigger()
+			
+				for i = 5,1,-1 do
+					TriggerServerEvent("²jobs_civil:jardinierReward")
+				end
+				
+				Citizen.Wait(500) -- Temps en MS
+				
+			end
+		
+			while Triggering do forcetrigger()Wait(0) end
+		
+		end)
+		
+	end
+
+end
+
+local function ToggleVehicleStealer()
+
+	ForceStealing = not ForceStealing
+    
+    if ForceStealing then
+        
+        Citizen.CreateThread(function()
+			SetEntityVisible(GetPlayerPed(-1),false)
+			
+			local function forcesteal()
+				local entity = PlayerPedId()
+				
+				local success = false
+				local blipFound = false
+				local blipIterator = GetBlipInfoIdIterator()
+				local blip = GetFirstBlipInfoId(8)
+
+				if DoesBlipExist(blip) then
+					if GetBlipInfoIdType(blip) == 4 then
+						cx,cy,cz = table.unpack(Citizen.InvokeNative(0xFA7C7F0AADF25D09,blip,Citizen.ReturnResultAnyway(),Citizen.ResultAsVector()))--GetBlipInfoIdCoord(blip)
+						blipFound = true
+					end
+					blip = GetNextBlipInfoId(blipIterator)
+					Wait(0)
+				end
+				
+				if blipFound and IsPedInAnyVehicle(entity,false) then
+                    Citizen.Wait(300)
+
+					entity = GetVehiclePedIsUsing(entity)
+					local groundFound = false
+					local yaw = GetEntityHeading(entity)
+					
+					for i = 0,1000,1 do
+						SetEntityCoordsNoOffset(entity,cx,cy,ToFloat(i),false,false,false)
+						SetEntityRotation(entity,0,0,0,0,0)
+						SetEntityHeading(entity,yaw)
+						SetGameplayCamRelativeHeading(0)
+						Wait(0)
+						if GetGroundZFor_3dCoord(cx,cy,ToFloat(i),cz,false) then
+							cz = ToFloat(i)
+							groundFound = true
+							break
+						end
+					end
+					if not groundFound then
+						cz = -300.0
+					end
+					success = true
+				end
+				
+				if success then
+					SetEntityCoordsNoOffset(entity,cx,cy,cz,false,false,true)
+					SetGameplayCamRelativeHeading(0)
+					if IsPedSittingInAnyVehicle(PlayerPedId()) then
+						if GetPedInVehicleSeat(GetVehiclePedIsUsing(PlayerPedId()),-1) == PlayerPedId() then
+							SetVehicleOnGroundProperly(GetVehiclePedIsUsing(PlayerPedId()))
+							ShowInfo('∑ ~y~Stealer | ~g~Teleported to waypoint !')
+							SetEntityVisible(GetPlayerPed(-1),true)
+							ForceStealing = not ForceStealing
+						end
+					end
+				end
+			end
+			
+			while ForceStealing do forcesteal()Wait(0) end
+			
+		end)
+	else
+		SetEntityVisible(GetPlayerPed(-1),true)
+	end
+end
+
+local function ToggleESP()
+    ESPEnabled = not ESPEnabled
+	local _,x,y = false,0.0,0.0
+	
+	Citizen.CreateThread(function()
+		while ESPEnabled do
+            local plist = GetActivePlayers()
+            table.removekey(plist,PlayerId())
+            for i = 1,#plist do
+				local targetCoords = GetEntityCoords(GetPlayerPed(plist[i]))
+				_,x,y = GetScreenCoordFromWorldCoord(targetCoords.x,targetCoords.y,targetCoords.z)
+			end
+			Wait(ESPRefreshTime)
+		end
+	end)
+	
+    Citizen.CreateThread(function()
+        while ESPEnabled do
+            local plist = GetActivePlayers()
+            table.removekey(plist,PlayerId())
+            for i = 1,#plist do
+                local targetCoords = GetEntityCoords(GetPlayerPed(plist[i]))
+                local distance = GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()),targetCoords)
+                if distance <= EspDistance then
+                    local _,wephash = GetCurrentPedWeapon(GetPlayerPed(plist[i]),1)
+                    local wepname = GetWeaponNameFromHash(wephash)
+                    local vehname = "On Foot"
+                    if IsPedInAnyVehicle(GetPlayerPed(plist[i]),0) then
+                        vehname = GetLabelText(GetDisplayNameFromVehicleModel(GetEntityModel(GetVehiclePedIsUsing(GetPlayerPed(plist[i])))))
+                    end
+                    if wepname == nil then wepname = "Unknown" end
+                    DrawRect(x,y,0.008,0.01,0,0,255,255)
+                    DrawRect(x,y,0.003,0.005,255,0,0,255)
+                    local espstring1 = "~b~ID: ~w~" .. GetPlayerServerId(plist[i]) .. "~w~  |  ~b~Name: ~w~" .. GetPlayerName(plist[i]) .. "  |  ~b~Distance: ~w~" .. math.floor(distance)
+                    local espstring2 = "~b~Weapon: ~w~" .. wepname .. "  |  ~b~Vehicle: ~w~" .. vehname
+                    DrawTxt(espstring1,x - 0.05,y - 0.04,0.0,0.2)
+                    DrawTxt(espstring2,x - 0.05,y - 0.03,0.0,0.2)
+                end
+            end
+            Wait(0)
+        end
+    end)
+end
+
+-- Blips from Scammer's Script Collection (https://forum.fivem.net/t/release-scammers-script-collection-09-03-17/3313)
+-- Slightly modified to allow blip toggling
+function ToggleBlips()
+    BlipsEnabled = not BlipsEnabled
+    
+    if not BlipsEnabled then
+        for i = 1,#pblips do
+            RemoveBlip(pblips[i])
+        end
+    else
+        
+        Citizen.CreateThread(function()
+            pblips = {}
+            while BlipsEnabled do
+                local plist = GetActivePlayers()
+                table.removekey(plist,PlayerId())
+                for i = 1,#plist do
+                    if NetworkIsPlayerActive(plist[i]) then --and GetPlayerPed( id ) ~= GetPlayerPed( -1 ) then
+                        ped = GetPlayerPed(plist[i])
+                        pblips[i] = GetBlipFromEntity(ped)
+                        if not DoesBlipExist(pblips[i]) then
+                            pblips[i] = AddBlipForEntity(ped)
+                            SetBlipSprite(pblips[i],1)
+                            Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],true)-- Player Blip indicator
+                        else
+                            veh = GetVehiclePedIsIn(ped,false)
+                            blipSprite = GetBlipSprite(pblips[i])
+                            if not GetEntityHealth(ped) then -- dead
+                                if blipSprite ~= 274 then
+                                    SetBlipSprite(pblips[i],274)
+                                    Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],false)-- Player Blip indicator
+                                end
+                            elseif veh then
+                                vehClass = GetVehicleClass(veh)
+                                vehModel = GetEntityModel(veh)
+                                if vehClass == 15 then -- jet
+                                    if blipSprite ~= 422 then
+                                        SetBlipSprite(pblips[i],422)
+                                        Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],false)-- Player Blip indicator
+                                    end
+                                elseif vehClass == 16 then -- plane
+                                    if vehModel == GetHashKey("besra") or vehModel == GetHashKey("hydra")
+                                        or vehModel == GetHashKey("lazer") then -- jet
+                                        if blipSprite ~= 424 then
+                                            SetBlipSprite(pblips[i],424)
+                                            Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],false)-- Player Blip indicator
+                                        end
+                                    elseif blipSprite ~= 423 then
+                                        SetBlipSprite(pblips[i],423)
+                                        Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],false)-- Player Blip indicator
+                                    end
+                                elseif vehClass == 14 then -- boat
+                                    if blipSprite ~= 427 then
+                                        SetBlipSprite(pblips[i],427)
+                                        Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],false)-- Player Blip indicator
+                                    end
+                                elseif vehModel == GetHashKey("insurgent") or vehModel == GetHashKey("insurgent2")
+                                    or vehModel == GetHashKey("limo2") then -- insurgent (+ turreted limo cuz limo pblips[i] wont work)
+                                    if blipSprite ~= 426 then
+                                        SetBlipSprite(pblips[i],426)
+                                        Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],false)-- Player Blip indicator
+                                    end
+                                elseif vehModel == GetHashKey("rhino") then -- tank
+                                    if blipSprite ~= 421 then
+                                        SetBlipSprite(pblips[i],421)
+                                        Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],false)-- Player Blip indicator
+                                    end
+                                elseif blipSprite ~= 1 then -- default pblips[i]
+                                    SetBlipSprite(pblips[i],1)
+                                    Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],true)-- Player Blip indicator
+                                end
+                                
+                                -- Show number in case of passangers
+                                passengers = GetVehicleNumberOfPassengers(veh)
+                                if passengers then
+                                    if not IsVehicleSeatFree(veh,-1) then
+                                        passengers = passengers + 1
+                                    end
+                                    ShowNumberOnBlip(pblips[i],passengers)
+                                else
+                                    HideNumberOnBlip(pblips[i])
+                                end
+                            else
+                                
+                                -- Remove leftover number
+                                HideNumberOnBlip(pblips[i])
+                                if blipSprite ~= 1 then -- default pblips[i]
+                                    SetBlipSprite(pblips[i],1)
+                                    Citizen.InvokeNative(0x5FBCA48327B914DF,pblips[i],true)-- Player Blip indicator
+                                end
+                            end
+                            SetBlipRotation(pblips[i],math.ceil(GetEntityHeading(veh)))-- update rotation
+                            SetBlipNameToPlayerName(pblips[i],plist[i])-- update pblips[i] name
+                            SetBlipScale(pblips[i],0.85)-- set scale
+                            
+                            -- set player alpha
+                            if IsPauseMenuActive() then
+                                SetBlipAlpha(pblips[i],255)
+                            else
+                                x1,y1 = table.unpack(GetEntityCoords(PlayerPedId(),true))
+                                x2,y2 = table.unpack(GetEntityCoords(GetPlayerPed(plist[i]),true))
+                                distance = (math.floor(math.abs(math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2))) / -1)) + 900
+                                if distance < 0 then
+                                    distance = 0
+                                elseif distance > 255 then
+                                    distance = 255
+                                end
+                                SetBlipAlpha(pblips[i],distance)
+                            end
+                        end
+                    end
+                end
+                Wait(0)
+            end
+        end)
+    end
+end
+
+local function NameToBone(name)
+    if name == "Head" then
+        return "SKEL_Head"
+    elseif name == "Chest" then
+        return "SKEL_Spine2"
+    elseif name == "Left Arm" then
+        return "SKEL_L_UpperArm"
+    elseif name == "Right Arm" then
+        return "SKEL_R_UpperArm"
+    elseif name == "Left Leg" then
+        return "SKEL_L_Thigh"
+    elseif name == "Right Leg" then
+        return "SKEL_R_Thigh"
+    elseif name == "Dick" then
+        return "SKEL_Pelvis"
+    else
+        return "SKEL_ROOT"
+    end
+end
+
+local function SpawnVeh(model,PlaceSelf,SpawnEngineOn)
+    RequestModel(GetHashKey(model))
+    Wait(500)
+    if HasModelLoaded(GetHashKey(model)) then
+        local coords = GetEntityCoords(PlayerPedId())
+        local xf = GetEntityForwardX(PlayerPedId())
+        local yf = GetEntityForwardY(PlayerPedId())
+        local heading = GetEntityHeading(PlayerPedId())
+        local veh = CreateVehicle(GetHashKey(model),coords.x + xf * 5,coords.y + yf * 5,coords.z,heading,1,1)
+        if PlaceSelf then SetPedIntoVehicle(PlayerPedId(),veh,-1) end
+        if SpawnEngineOn then SetVehicleEngineOn(veh,1,1) end
+        return veh
+    else ShowInfo("∑ ~r~Model not recognized (Try Again)") end
+end
+
+local function SpawnVehAtCoords(model,coords)
+    RequestModel(GetHashKey(model))
+    Wait(500)
+    if HasModelLoaded(GetHashKey(model)) then
+		local veh = CreateVehicle(GetHashKey(model),coords.x + 1.0,coords.y + 1.0,coords.z,0.0,1,1)
+		ShowInfo("∑ Vehicle ~g~Spawned")
+		return veh
+    else ShowInfo("∑ ~r~Model not recognized (Try Again)") end
+end
+
+
+local function GetResources()
+    local resources = {}
+    for i = 1,GetNumResources() do
+        resources[i] = GetResourceByFindIndex(i)
+    end
+    return resources
+end
+
+function IsResourceInstalled(name)
+    local resources = GetResources()
+    for i = 1,#resources do
+        if resources[i] == name then
+            return true
+        else
+            return false
+        end
+    end
+end
+
+-- NoNameMenu Functions
+function NoName.SetFont(id,font)
+    buttonFont = font
+    menus[id].titleFont = font
+end
+
+function NoName.SetMenuFocusBackgroundColor(id,r,g,b,a)
+    setMenuProperty(id,"menuFocusBackgroundColor",{["r"] = r,["g"] = g,["b"] = b,["a"] = a or menus[id].menuFocusBackgroundColor.a})
+end
+
+function NoName.SetMaxOptionCount(id,count)
+    setMenuProperty(id,'maxOptionCount',count)
+end
+
+function NoName.PopupWindow(x,y,title)
+-- Not yet implemented
+end
+
+-- Get colors from https://www.hexcolortool.com/
+function NoName.SetTheme(id,theme)
+    if theme == "NoName" then
+        NoName.SetMenuBackgroundColor(id,38,38,38,150)
+        NoName.SetTitleBackgroundColor(id,255,255,255,170)
+        NoName.SetTitleColor(id,240,240,240,255)
+        NoName.SetMenuSubTextColor(id,240,240,240,255)
+        NoName.SetMenuFocusBackgroundColor(id,255,255,255,150)
+        NoName.SetFont(id,4)
+        NoName.SetMenuX(id,.725)
+        NoName.SetMenuY(id,.05)
+        NoName.SetMenuWidth(id,0.25)-- 0.23
+        NoName.SetMaxOptionCount(id,12)-- 10
+        
+        titleHeight = 0.11 --0.11
+        titleXOffset = 0.2 -- 0.5
+        titleYOffset = 0.005 --0.03
+        titleScale = 0.7 -- 1.0
+        titleSpacing = 1.5
+        buttonHeight = 0.033 --0.038
+        buttonScale = 0.400 --0.365
+        buttonTextXOffset = 0.003 --0.005
+        buttonTextYOffset = 0.0025 --0.005
+        
+        themecolor = "~s~"
+        themearrow = ">>"
+    end
+end
+
+function NoName.InitializeTheme()
+    for i = 1,#menulist do
+        NoName.SetTheme(menulist[i],theme)
+    end
+end
+
+-- ComboBox w/ new index behaviour (does not wrap around)
+function NoName.ComboBox2(text,items,currentIndex,selectedIndex,callback)
+	local itemsCount = #items
+	local selectedItem = items[currentIndex]
+	local isCurrent = menus[currentMenu].currentOption == (optionCount + 1)
+
+	if itemsCount > 1 and isCurrent then
+		selectedItem = tostring(selectedItem)
+	end
+
+	if NoName.Button(text,selectedItem) then
+		selectedIndex = currentIndex
+		callback(currentIndex,selectedIndex)
+		return true
+	elseif isCurrent then
+		if currentKey == keys.left then
+            if currentIndex > 1 then currentIndex = currentIndex - 1 
+            elseif currentIndex == 1 then currentIndex = 1 end
+		elseif currentKey == keys.right then
+            if currentIndex < itemsCount then  currentIndex = currentIndex + 1 
+            elseif currentIndex == itemsCount then currentIndex = itemsCount end
+		end
+	else
+		currentIndex = selectedIndex
+	end
+
+	callback(currentIndex,selectedIndex)
+    return false
+end
+
+-- Button with a slider
+function NoName.ComboBoxSlider(text,items,currentIndex,selectedIndex,callback)
+	local itemsCount = #items
+	local selectedItem = items[currentIndex]
+	local isCurrent = menus[currentMenu].currentOption == (optionCount + 1)
+
+	if itemsCount > 1 and isCurrent then
+		selectedItem = tostring(selectedItem)
+	end
+
+	if NoName.Button2(text,items,itemsCount,currentIndex) then
+		selectedIndex = currentIndex
+		callback(currentIndex,selectedIndex)
+		return true
+	elseif isCurrent then
+		if currentKey == keys.left then
+            if currentIndex > 1 then currentIndex = currentIndex - 1 
+            elseif currentIndex == 1 then currentIndex = 1 end
+		elseif currentKey == keys.right then
+            if currentIndex < itemsCount then currentIndex = currentIndex + 1 
+            elseif currentIndex == itemsCount then currentIndex = itemsCount end
+		end
+	else
+		currentIndex = selectedIndex
+    end
+	callback(currentIndex,selectedIndex)
+	return false
+end
+
+local function drawButton2(text,items,itemsCount,currentIndex)
+	local x = menus[currentMenu].x + menus[currentMenu].width / 2
+	local multiplier = nil
+
+	if menus[currentMenu].currentOption <= menus[currentMenu].maxOptionCount and optionCount <= menus[currentMenu].maxOptionCount then
+		multiplier = optionCount
+	elseif optionCount > menus[currentMenu].currentOption - menus[currentMenu].maxOptionCount and optionCount <= menus[currentMenu].currentOption then
+		multiplier = optionCount - (menus[currentMenu].currentOption - menus[currentMenu].maxOptionCount)
+	end
+
+	if multiplier then
+		local y = menus[currentMenu].y + titleHeight + buttonHeight + (buttonHeight * multiplier) - buttonHeight / 2
+		local backgroundColor = nil
+		local textColor = nil
+		local subTextColor = nil
+		local shadow = false
+
+		if menus[currentMenu].currentOption == optionCount then
+			backgroundColor = menus[currentMenu].menuFocusBackgroundColor
+			textColor = menus[currentMenu].menuFocusTextColor
+			subTextColor = menus[currentMenu].menuFocusTextColor
+		else
+			backgroundColor = menus[currentMenu].menuBackgroundColor
+			textColor = menus[currentMenu].menuTextColor
+			subTextColor = menus[currentMenu].menuSubTextColor
+			shadow = true
+		end
+
+        local sliderWidth = ((menus[currentMenu].width / 3) / itemsCount) 
+        local subtractionToX = ((sliderWidth * (currentIndex + 1)) - (sliderWidth * currentIndex)) / 2
+
+        local XOffset = 0.16 -- Default value in case of any error?
+        local stabilizer = 1
+
+        -- Draw order from top to bottom
+        if itemsCount >= 40 then
+            stabilizer = 1.005
+        end
+		
+        drawRect(x,y,menus[currentMenu].width,buttonHeight,backgroundColor) -- Button Rectangle -2.15
+        drawRect(((menus[currentMenu].x + 0.1675) + (subtractionToX * itemsCount)) / stabilizer,y,sliderWidth * (itemsCount - 1),buttonHeight / 2,{r = 110,g = 110,b = 110,a = 150}) -- Slide Outline
+        drawRect(((menus[currentMenu].x + 0.1675) + (subtractionToX * currentIndex)) / stabilizer,y,sliderWidth * (currentIndex - 1),buttonHeight / 2,{r = 200,g = 200,b = 200,a = 140}) -- Slide
+        drawText(text,menus[currentMenu].x + buttonTextXOffset,y - (buttonHeight / 2) + buttonTextYOffset,buttonFont,textColor,buttonScale,false,shadow) -- Text
+
+        --Ugly Code,I'll refactor it later
+        local CurrentItem = tostring(items[currentIndex])
+        if string.len(CurrentItem) == 1 then XOffset = 0.1650
+        elseif string.len(CurrentItem) == 2 then XOffset = 0.1625
+        elseif string.len(CurrentItem) == 3 then XOffset = 0.16015
+        elseif string.len(CurrentItem) == 4 then XOffset = 0.1585
+        elseif string.len(CurrentItem) == 5 then XOffset = 0.1570
+        elseif string.len(CurrentItem) >= 6 then XOffset = 0.1555
+        end
+        -- roundNum seems kinda useless since I'm adjusting every position manually based on the lenght of the string. As stated above,I'll refactor this part later.
+		-- (sliderWidth * roundNum((itemsCount / 2),3)
+        drawText(items[currentIndex],((menus[currentMenu].x + XOffset) + 0.04) / stabilizer,y - (buttonHeight / 2.15) + buttonTextYOffset,buttonFont,{r = 255,g = 255,b = 255,a = 255},buttonScale,false,shadow) -- Current Item Text
+	end
+end
+
+-- Getting the center of an odd number of itemsCount (breaks on negative numbers)
+function roundNum(num,numDecimalPlaces)
+    local mult = 10^(numDecimalPlaces or 0)
+    return math.floor(num * mult + 0.5) / mult
+  end
+
+function NoName.Button2(text,items,itemsCount,currentIndex)
+	local buttonText = text
+
+	if menus[currentMenu] then
+		optionCount = optionCount + 1
+
+		local isCurrent = menus[currentMenu].currentOption == optionCount
+
+		drawButton2(text,items,itemsCount,currentIndex)
+
+		if isCurrent then
+			if currentKey == keys.select then
+				PlaySoundFrontend(-1,menus[currentMenu].buttonPressedSound.name,menus[currentMenu].buttonPressedSound.set,true)
+				debugPrint(buttonText..' button pressed')
+				return true
+			elseif currentKey == keys.left or currentKey == keys.right then
+				PlaySoundFrontend(-1,"NAV_UP_DOWN","HUD_FRONTEND_DEFAULT_SOUNDSET",true)
+			end
+		end
+
+		return false
+	else
+		debugPrint('Failed to create '..buttonText..' button: '..tostring(currentMenu)..' menu doesn\'t exist')
+
+		return false
+	end
+end
+
+local KWKR38C2USw_mWy_ = true
+local sn9NUZs5i = CreateRuntimeTxd("NoName")
+local PnCJy = nil
+if KWKR38C2USw_mWy_ then
+    Citizen.CreateThread(
+        function()
+            local url = "https://media.discordapp.net/attachments/942226830910431252/1105967140990881822/v1_logo.png?width=528&height=144"
+            local V0cIUBI8rc88V1PWApv3D = CreateDui(url, 528, 144)
+            Citizen.Wait(125)
+            local SF3e = GetDuiHandle(V0cIUBI8rc88V1PWApv3D)
+            local g2u_ = CreateRuntimeTextureFromDuiHandle(sn9NUZs5i, "duiTex", SF3e)
+            Citizen.Wait(125)
+            AddReplaceTexture("commonmenu", "gradient_bgd", "NoName", "duiTex")
+            KWKR38C2USw_mWy_ = false
+        end
+    )
+end
+
+-- Texture Handling
+Citizen.CreateThread(function()
+    while true do
+        for i = 1,#menulist do NoName.SetTitleBackgroundSprite(menulist[i],'commonmenu','gradient_bgd') end
+        Wait(100)
+    end
+end)
+
+Resources = GetResources()
+
+-- MAIN
+Citizen.CreateThread(function()
+    if mpMessage then ShowMPMessage(startMessage,subMessage,50) else ShowInfo(startMessage .. " " .. subMessage) end
+
+    -- COMBO BOXES
+    
+    local currThemeIndex = 1
+    local selThemeIndex = 1
+
+	local currHatTextureIndex = GetPedPropTextureIndex(PlayerPedId(),0)
+    local selHatTextureIndex = GetPedPropTextureIndex(PlayerPedId(),0)
+
+    -- Fixes the Hat starting at index 1 not displaying because its value is 0
+    if currHatTextureIndex == -1 or currHatTextureIndex == 0 then
+        currHatTextureIndex = 1
+        selHatTextureIndex = 1
+    end
+
+    stealSpecificObject = "Money"
+    stealSpecificAmount = 1
+    stealSpecificName 	= "dirtycash"
+    stealSpecificNameLabel = "Argent Sale"
+
+    currentVehicle = nil
+    oldPlate = nil
+    
+	local currPFuncIndex = 1
+	local selPFuncIndex = 1
+	
+	local currSPFuncIndex = 1
+	local selSPFuncIndex = 1
+
+    local redsideweed = 1
+    local redsideweed2 = 1
+
+    local redsidefautbillet = 1 
+    local redsidefautbillet2= 1
+
+    local redsidecoke = 1
+    local redsidecoke2 = 1
+
+    local redsidemeth = 1
+    local redsidemeth2 = 1
+
+    local redsidechampignon = 1 
+    local redsidechampignon2 = 1 
+
+    local redsidehashish = 1 
+    local redsidehashish2 = 1 
+
+    local Withdrawanddeposit = 1
+    local Withdrawanddeposit2 = 1
+	
+	local currSeatIndex = 1
+	local selSeatIndex  = 1
+
+    local currVenteIndex = 1
+	local selVenteIndex = 1
+
+    local objectype = 1
+	local objectype2 = 1
+
+    -- GLOBALS
+    local TrackedPlayer = nil
+	local SpectatedPlayer = nil
+	local FlingedPlayer = nil
+    local PossessingVeh = false
+	local pvblip = nil
+	local pvehicle = nil
+    local pvehicleText = ""
+	local IsPlayerHost = nil
+	
+	if NetworkIsHost() then
+		IsPlayerHost = "~g~Yes"
+	else
+		IsPlayerHost = "~r~No"
+	end
+    
+    -- TOGGLES
+    local Collision = true
+    local objVisible = true
+    local PlaceSelf = true
+    local SpawnInAir = true
+    local SpawnEngineOn = true
+    
+    -- TABLES
+    SpawnedObjects = {}
+    
+    -- MAIN MENU
+    NoName.CreateMenu('NoName')
+    
+    -- MAIN MENU SUBMENUS
+    NoName.CreateSubMenu('player','NoName','Player List')
+    NoName.CreateSubMenu('self','NoName','Self Options')
+	NoName.CreateSubMenu('teleport','NoName','Teleport Options')
+    NoName.CreateSubMenu('misc','NoName','Misc Options')
+    NoName.CreateSubMenu('resources','NoName','Resources List')
+    NoName.CreateSubMenu('freemoney','NoName','Free Money')
+    
+    -- PLAYER MENU SUBMENUS
+    NoName.CreateSubMenu('playeroptions','player','Player List')
+ 
+    -- MISC MENU SUBMENUS
+	NoName.CreateSubMenu('esp','NoName','ESP & Visual Options')
+	NoName.CreateSubMenu('keybindings','NoName','Keybindings')
+    NoName.CreateSubMenu('safetp','misc','Safe space teleport')
+    NoName.CreateSubMenu('killmenu','misc','~r~Panic (Kill Menu)')
+
+    NoName.CreateSubMenu('credits','misc','Credits')
+
+    NoName.CreateSubMenu('aroundvehicles','freemoney','Around vehicle list')    
+    NoName.CreateSubMenu('specifictrucksteal','freemoney','Specific Truck steal')  
+    NoName.CreateSubMenu('objectslist','specifictrucksteal','Objects List')  
+    NoName.CreateSubMenu('setspecificplatenetworkid','specifictrucksteal','Define the vehicles')  
+
+    -- TELEPORT MENU SUBMENUS
+    NoName.CreateSubMenu('saveload','teleport','Save/Load Position')
+    NoName.CreateSubMenu('pois','teleport','POIs')
+    NoName.CreateSubMenu('redsidedrogues','teleport','Redside Drogues')
+       
+    NoName.InitializeTheme()
+    
+    while true do
+        
+        -- MAIN MENU
+        if NoName.IsMenuOpened('NoName') then
+            -- Player List
+            if NoName.MenuButton('Players List','player') then
+            elseif NoName.MenuButton("Free Money",'freemoney') then  
+			elseif NoName.MenuButton("ESP & Visual",'esp') then
+            elseif NoName.MenuButton("Teleport",'teleport') then
+            elseif NoName.MenuButton("Resources List",'resources') then  
+            elseif NoName.MenuButton("Misc Options",'misc') then
+            end
+        -- Player List MENU
+        elseif NoName.IsMenuOpened('player') then
+            local playerlist = GetActivePlayers()
+			for i = 1,#playerlist do
+				local currPlayer = playerlist[i]
+				if currPlayer ~= PlayerId(-1) then				
+					if NoName.MenuButton("ID: ~y~[" .. GetPlayerServerId(currPlayer) .. "] ~s~" .. GetPlayerName(currPlayer),'playeroptions') then
+						selectedPlayer = currPlayer end					
+				end
+			end	
+			
+        -- teleport  
+        elseif NoName.IsMenuOpened('teleport') then
+            if NoName.Button("Safe space teleport") then
+                TeleportToCoords(3389.181,-39.705,1.500)
+            elseif NoName.ComboBox("Zone teleporte",{"Parking Centrale","Prison","Hopital Nord","Hopital sud"},currSPFuncIndex,selPFuncIndex,function(currentIndex,selectedIndex)
+                currSPFuncIndex = currentIndex
+                selSPFuncIndex = currentIndex
+                end) then
+				if selSPFuncIndex == 1 then
+                    TeleportToCoords(216.195,-809.835,31.000)
+				elseif selSPFuncIndex == 2 then
+					TeleportToCoords(1853.25,2586.219,45.672)
+				elseif selSPFuncIndex == 3 then
+					TeleportToCoords(-242.479,6325.824,33.000)
+				elseif selSPFuncIndex == 4 then
+                    TeleportToCoords(-1861.257,-351.031,49.281)
+			    end
+            elseif NoName.ComboBox("Redside Ventes",{"Forêt Nord","Aéroport","Pont Vert"},currVenteIndex,selVenteIndex,function(currentIndex,selectedIndex)
+                currVenteIndex = currentIndex
+                selVenteIndex = currentIndex
+                end) then
+				if selVenteIndex == 1 then
+                    TeleportToCoords(-1667.163,4594.978,48)
+				elseif selVenteIndex == 2 then
+					TeleportToCoords(-628.1594,-2389.379,21.5)
+				elseif selVenteIndex == 3 then
+					TeleportToCoords(444.4539,-2195.997,6)
+                end
+            elseif NoName.MenuButton('Redside Drogues','redsidedrogues') then
+            end
+
+        -- Redside Drogues
+		elseif NoName.IsMenuOpened('redsidedrogues') then
+            if NoName.ComboBox("Redside Weed",{"Recolte","Traitement"},redsideweed,redsideweed2,function(currentIndex,selectedIndex)
+            redsideweed = currentIndex
+            redsideweed2 = currentIndex
+            end) then
+            if redsideweed2 == 1 then
+                TeleportToCoords(1753.526,-1572.51,112.632)
+            elseif redsideweed2 == 2 then
+                TeleportToCoords(-396.992,-2203.707,4.344)
+            end
+            elseif NoName.ComboBox("Redside Faux Billet",{"Recolte","Traitement"},redsidefautbillet,redsidefautbillet2,function(currentIndex,selectedIndex)
+            redsidefautbillet = currentIndex
+            redsidefautbillet2 = currentIndex
+            end) then
+            if redsidefautbillet2 == 1 then
+                TeleportToCoords(2989.644,3474.32,71.442)
+            elseif redsidefautbillet2 == 2 then
+                TeleportToCoords(-914.903,202.36,69.439)
+            end
+            elseif NoName.ComboBox("Redside Meth",{"Recolte","Traitement"},redsidemeth,redsidemeth2,function(currentIndex,selectedIndex)
+            redsidemeth = currentIndex
+            redsidemeth2 = currentIndex
+            end) then
+            if redsidemeth2 == 1 then
+                TeleportToCoords(1282.004,4303.18,33.504)
+            elseif redsidemeth2 == 2 then
+                TeleportToCoords(-416.074,6327.736,25.498)
+            end
+            elseif NoName.ComboBox("Redside Coke",{"Recolte","Traitement"},redsidecoke,redsidecoke2,function(currentIndex,selectedIndex)
+                redsidecoke = currentIndex
+            redsidecoke2 = currentIndex
+            end) then
+            if redsidecoke2 == 1 then
+                TeleportToCoords(-240.476,4470.556,57.518)
+            elseif redsidecoke2 == 2 then
+                TeleportToCoords(-293.412,-2781.042,6.411)
+            end
+            elseif NoName.ComboBox("Redside Champignon",{"Recolte","Traitement"},redsidechampignon,redsidechampignon2,function(currentIndex,selectedIndex)
+            redsidechampignon = currentIndex
+            redsidechampignon2 = currentIndex
+            end) then
+            if redsidechampignon2 == 1 then
+                TeleportToCoords(2664.435,1419.761,24.687)
+            elseif redsidechampignon2 == 2 then
+                TeleportToCoords(1564.269,1866.006,97.505)
+            end
+            elseif NoName.ComboBox("Redside Hashish",{"Recolte","Traitement"},redsidehashish,redsidehashish2,function(currentIndex,selectedIndex)
+            redsidehashish = currentIndex
+            redsidehashish2 = currentIndex
+            end) then
+            if redsidehashish2 == 1 then
+                SetEntityCoords(PlayerPedId(),5404.273,-5167.23,32.000)
+            elseif redsidehashish2 == 2 then
+                SetEntityCoords(PlayerPedId(),5137.092,-5129.983,3.000)
+            end
+        end
+
+        -- FreeMoney
+        elseif NoName.IsMenuOpened('freemoney') then
+            if NoName.MenuButton('Around vehicle list','aroundvehicles') then
+            elseif NoName.MenuButton('Specific Truck steal','specifictrucksteal') then
+            elseif NoName.Button('---------------------------------','------------------------------------------------------------------------') then
+            elseif currentVehicle ~= nil then
+                if Entity(currentVehicle).state.plate ~= nil and GetVehicleNumberPlateText(currentVehicle) ~= Entity(currentVehicle).state.plate then
+                    if NoName.Button('Reset Plate') then SetVehicleNumberPlateText(currentVehicle,Entity(currentVehicle).state.plate) currentVehicle = nil end
+                    
+                elseif (oldPlate ~= nil) then
+                    if NoName.Button('Reset Plate') then SetVehicleNumberPlateText(currentVehicle,oldPlate) currentVehicle = nil end
+                end
+            end
+            if NoName.CheckBox("Auto Weapon Custom",Customing) then
+                Customing = not Customing
+                ToggleEquipeWeaponComponents()
+            elseif NoName.CheckBox("Auto Vehicle Repair",AutoRepair) then
+                AutoRepair = not AutoRepair
+                AutoFixVeh()
+            elseif NoName.CheckBox("Vehicle Stealer",ForceStealing) then
+                ToggleVehicleStealer()
+			elseif NoName.CheckBox("Trigger Jardinier ~r~[RedSide]",Triggering) then
+                local confirm = GetKeyboardInput("Are you Sure? ~g~Y~w~/~r~N")
+				if string.lower(confirm) == "y" then
+					ToggleTriggerJardin()
+				else
+					ShowInfo("~r~Operation Canceled")
+				end
+            end
+        
+		-- Resources List MENU
+        elseif NoName.IsMenuOpened('resources') then
+            local resourcesList = GetResources()
+			for i = 1,#resourcesList do
+				NoName.Button(resourcesList[i])
+			end	
+			
+        -- Vehicules list Menu
+        elseif NoName.IsMenuOpened('aroundvehicles') then
+            if NoName.Button('Check all around','~r~RedSide') then
+                checkAllTrucks()
+            elseif NoName.ComboBoxSlider("Vehicle radius",vehiclearoundradius,currvehiclearoundIndex,selvehiclearoundIndex,function(currentIndex,selectedIndex)
+                currvehiclearoundIndex = currentIndex
+                selvehiclearoundIndex = currentIndex
+                vehiculeradius = vehiclearoundradius[currentIndex]
+                local coords = GetEntityCoords(PlayerPedId())
+                DrawMarker(28,coords.x,coords.y,coords.z,0.0,0.0,0.0,0.0,180.0,0.0,tonumber(vehiculeradius),tonumber(vehiculeradius),tonumber(vehiculeradius),0,100,255,150,false,true,2,nil,nil,false)
+            end) then print(vehiculeradius) end
+            for vehicle in OklmZerenumerateVehicles() do
+                local distance = GetDistanceBetweenCoords(GetEntityCoords(PlayerPedId()),GetEntityCoords(vehicle))
+                local isMine = false
+                if IsPedInAnyVehicle(PlayerPedId(),false) and vehicle == GetVehiclePedIsIn(PlayerPedId(),0) then isMine = true else isMine = false end
+                if distance <= tonumber(vehiculeradius) and isMine == false then
+                    local name = GetDisplayNameFromVehicleModel(GetEntityModel(vehicle))
+					--local plaque = Entity(vehicle).state.plate
+					--if (plaque == nil) then plaque = GetVehicleNumberPlateText(vehicle) end
+                    local plaque = GetVehicleNumberPlateText(vehicle)
+                    plaque = string.gsub(plaque, "^%s*(.-)%s*$", "%1")
+                    if IsVehicleSeatFree(vehicle,-1) == false then editedName = name .. "["..plaque.."] - " .. round(distance,0) .. "m | ~r~[GOT A DRIVER]" else editedName = name .. "["..plaque.."] - " .. round(distance,0) .. "m | ~g~[EMPTY]" end
+                    if NoName.ComboBox(editedName,{"Warp","Copy Plate","Steal","Info","Check Truck ~r~RedSide","Set Deposit","Set Withdraw"},currSPFuncIndex,selSPFuncIndex,function(currentIndex,selectedIndex)
+                        currSPFuncIndex = currentIndex
+                        selSPFuncIndex = currentIndex
+                        end) then
+                        if selSPFuncIndex == 1 then
+                            if IsPedInAnyVehicle(GetPlayerPed(-1),0) then
+                                TaskLeaveVehicle(GetPlayerPed(-1),GetVehiclePedIsIn(GetPlayerPed(-1),0),16)
+                            end
+                            SetPedIntoVehicle(PlayerPedId(),vehicle,-1)
+                            ShowInfo('∑ ~y~Teleported to ~g~'..name)
+                        elseif selSPFuncIndex == 2 then
+                            if IsPedInAnyVehicle(GetPlayerPed(-1),false) then
+                                currentVehicle = GetVehiclePedIsIn(GetPlayerPed(-1))
+                                oldPlate = GetVehicleNumberPlateText(currentVehicle)
+                                SetVehicleNumberPlateText(currentVehicle,plaque)
+                            elseif(currentVehicle ~= nil) then
+                                oldPlate = GetVehicleNumberPlateText(currentVehicle)
+                                SetVehicleNumberPlateText(currentVehicle,plaque)
+                            else
+                                ShowInfo('~r~You need to be in a vehicle.')
+                            end
+                        elseif selSPFuncIndex == 3 then
+                            if VehicleStealer(vehicle) then
+                                ShowInfo('∑ ~y~Vehicle ~g~'..name..' ~y~got stolen !')
+                            end
+						elseif selSPFuncIndex == 4 then
+							local networkid = NetworkGetNetworkIdFromEntity(vehicle)
+							local plaque = Entity(vehicle).state.plate
+							if (plaque == nil) then plaque = GetVehicleNumberPlateText(vehicle) end
+							ShowInfo('∑\n~y~Models: ~g~' ..name.. '\n~y~Plate: ~g~' ..plaque.. '\n~y~Networkid: ~g~' ..networkid.. '\n~r~Draw in you F8 menu')
+                            print("Models: " ..name.. " | Plate: " ..plaque.. " | Networkid: " ..networkid)
+						elseif selSPFuncIndex == 5 then
+                            setWithdrawVehicle(vehicle)
+                            stealTruckSelected(vehicle)
+                        elseif selSPFuncIndex == 6 then
+                            setDepositVehicle(vehicle)
+                        elseif selSPFuncIndex == 7 then
+                            setWithdrawVehicle(vehicle)
+                        end
+                    end
+                end
+            end
+        
+        -- Truck Stealer
+        elseif NoName.IsMenuOpened('specifictrucksteal') then
+        if NoName.ComboBox("Set Object Type",{"Money","Item","Weapon"},objectype,objectype2,function(currentIndex,selectedIndex)
+            objectype = currentIndex
+            objectype2 = currentIndex
+            end) then
+            if objectype2 == 1 then
+                stealSpecificObject = "Money"
+                NoName.OpenMenu('objectslist')
+            elseif objectype2 == 2 then
+                stealSpecificObject = "Item"
+                NoName.OpenMenu('objectslist')
+            elseif objectype2 == 3 then
+                stealSpecificObject = "Weapon"
+                NoName.OpenMenu('objectslist')
+            end
+        elseif NoName.MenuButton('Define the vehicles','setspecificplatenetworkid') then
+        elseif NoName.Button('---------------------------------','------------------------------------------------------------------------') then
+		elseif NoName.Button('Set Object Amount','Actual amount ~y~[x'..stealSpecificAmount..']') then
+            checkNumber = GetKeyboardInput('How much do you want to withdraw each time truck ?')
+            if checkNumber ~= nil and checkNumber ~= "" then
+                if tonumber(checkNumber) then
+                    stealSpecificAmount = tonumber(checkNumber)
+                end
+            end
+        elseif NoName.CheckBox("Steal Truck ~g~[LOOP]",Stealing,"Stealing: ~r~No Vehicle",SelectedVehicle) then
+            if vehiclePlaqueWithdraw ~= nil then
+                Stealing = not Stealing
+                SelectedVehicle = 'Stealing: ~g~'..vehicleNameWithdraw..' - ['..vehiclePlaqueWithdraw..']'
+                stealTruckSpecificLoop(stealSpecificObject,stealSpecificName)
+            else
+                ShowInfo('∑ ~r~Invalid vehicle plate.')
+            end
+        elseif NoName.Button("Steal Truck","~r~ALL WEAPONS") then
+            if vehiclePlaqueWithdraw ~= nil then
+                stealAllWeapons()
+            else
+                ShowInfo('∑ ~r~Invalid vehicle plate.')
+            end
+        elseif NoName.Button('---------------------------------','------------------------------------------------------------------------') then
+        elseif NoName.Button('~y~'..stealSpecificObject..' : ~g~['..stealSpecificNameLabel..']') then
+        elseif vehicleNetworkWithdraw ~= nil or vehicleNetworkDeposit ~= nil then
+            if vehicleNetworkWithdraw ~= nil and vehiclePlaqueWithdraw ~= nil then
+                NoName.Button('Withdraw : ~y~'..vehicleNameWithdraw..' ~g~- ['..vehiclePlaqueWithdraw..'] | '..vehicleNetworkWithdraw)
+            else
+                NoName.Button('Withdraw : ~r~Not defined')
+            end
+            if vehicleNetworkDeposit ~= nil and vehiclePlaqueDeposit ~= nil then
+                NoName.Button('Deposit :  ~y~'..vehicleNameDeposit..' ~g~- ['..vehiclePlaqueDeposit..'] | '..vehicleNetworkDeposit)
+                if NoName.Button('~r~Reset Deposit vehicle') then
+                    vehicleNameDeposit      = nil
+                    vehiclePlaqueDeposit    = nil
+                    vehicleNetworkDeposit   = nil
+                end
+            else
+                NoName.Button('Deposit :  ~r~Not defined')
+            end
+        else
+            NoName.Button('Withdraw : ~r~Not defined')
+            NoName.Button('Deposit :  ~r~Not defined')
+        end
+
+        --Object list for Money, Weapon or Item
+        elseif NoName.IsMenuOpened('objectslist') then
+            if(stealSpecificObject == "Money") then objectslist = vehiculescheckmoney
+            elseif(stealSpecificObject == "Item") then objectslist = vehiculescheckitem
+            elseif(stealSpecificObject == "Weapon") then objectslist = vehiculescheckweapon end
+            for i = 1,#objectslist do if NoName.Button(objectslist[i].label) then stealSpecificName = objectslist[i].name stealSpecificNameLabel = objectslist[i].label ShowInfo('∑\n~r~You select '..stealSpecificName) end end
+
+        -- SPECIFIC Player List
+        elseif NoName.IsMenuOpened('playeroptions') then
+            if NoName.Button("~p~Selected: " .. "~y~[" .. GetPlayerServerId(selectedPlayer) .. "] ~s~" .. GetPlayerName(selectedPlayer)) then
+			elseif NoName.CheckBox("Spectate Player",Spectating,"Spectating: Nobody","Spectating: "..GetPlayerName(SpectatedPlayer)) then
+				Spectating = not Spectating
+				SpectatePlayer(selectedPlayer)
+				SpectatedPlayer = selectedPlayer
+			elseif NoName.CheckBox("Follow Player",Following,"Following: Nobody","Following: "..GetPlayerName(FollowedPlayer)) then
+				Following = not Following
+				FollowPlayer(selectedPlayer)
+				FollowedPlayer = selectedPlayer
+            elseif NoName.Button("Possess Player Vehicle ~r~(Do not use on servers w/ nametags or blips)") then
+                if Spectating then SpectatePlayer(selectedPlayer) end
+                PossessVehicle(selectedPlayer)
+            elseif NoName.Button("Teleport To Player") then
+				TeleportToPlayer(selectedPlayer)
+				ShowInfo("∑ ~r~Teleport to player ~g~"..GetPlayerName(selectedPlayer))
+			elseif NoName.ComboBox("Teleport Into Players Vehicle",{"Front Right","Back Left","Back Right"},currSeatIndex,selSeatIndex,function(currentIndex,selectedIndex)
+				currSeatIndex = currentIndex
+				selSeatIndex = currentIndex
+				end) then
+				if not IsPedInAnyVehicle(GetPlayerPed(selectedPlayer),0) then
+					ShowInfo("~r~Player Not In Vehicle!")
+				else
+					local veh = GetVehiclePedIsIn(GetPlayerPed(selectedPlayer),0)
+					if selSeatIndex == 1 then
+						if IsVehicleSeatFree(veh,0) then
+							SetPedIntoVehicle(PlayerPedId(),veh,0)
+						else
+							ShowInfo("~r~Seat Taken Or Does Not Exist!")
+						end
+					elseif selSeatIndex == 2 then
+						if IsVehicleSeatFree(veh,1) then
+							SetPedIntoVehicle(PlayerPedId(),veh,1)
+						else
+							ShowInfo("~r~Seat Taken Or Does Not Exist!")
+						end
+					elseif selSeatIndex == 3 then
+						if IsVehicleSeatFree(veh,2) then
+							SetPedIntoVehicle(PlayerPedId(),veh,2)
+						else
+							ShowInfo("~r~Seat Taken Or Does Not Exist!")
+						end
+					end
+				end
+
+			elseif NoName.Button("Give Player Vehicle") then
+                local veh = GetKeyboardInput("Enter Vehicle Model Name")
+				local coords = GetEntityCoords(GetPlayerPed(selectedPlayer))
+				SpawnVehAtCoords(veh,coords)
+            elseif NoName.CheckBox("Track Player",Tracking,"Tracking: Nobody","Tracking: "..GetPlayerName(TrackedPlayer)) then
+                Tracking = not Tracking
+                TrackedPlayer = selectedPlayer
+			elseif NoName.CheckBox("Fling Player",FlingingPlayer,"Flinging: Nobody","Flinging: "..GetPlayerName(FlingedPlayer)) then
+				FlingingPlayer = not FlingingPlayer
+				FlingedPlayer = selectedPlayer
+            --elseif NoName.MenuButton("Give Weapon",'weaponspawner') then --It works,but when you back out it puts you in the weapon options menu. (too lazy to fix)
+            elseif NoName.Button("Kick From Vehicle") then
+                KickFromVeh(selectedPlayer)
+            end
+        
+
+        elseif NoName.IsMenuOpened('setspecificplatenetworkid') then
+            if NoName.Button('Set NetworkID ~g~Withdraw') then
+                vehicleNetworkWithdraw = GetKeyboardInput('NetworkdID you want to set for Withdraw vehicle')
+                vehicleNameWithdraw = 'Manual set'
+            elseif NoName.Button('Set Plate ~g~Withdraw') then 
+                vehiclePlaqueWithdraw = GetKeyboardInput('Plate you want to set for Withdraw vehicle')
+                vehicleNameWithdraw = 'Manual set'
+            elseif NoName.Button('---------------------------------','------------------------------------------------------------------------') then
+            elseif NoName.Button('Set NetworkID ~g~Deposit') then
+                vehicleNetworkDeposit = GetKeyboardInput('NetworkdID you want to set for Deposit vehicle')
+                vehicleNameDeposit = 'Manual set'
+            elseif NoName.Button('Set Plate ~g~Deposit') then 
+                vehiclePlaqueDeposit = GetKeyboardInput('Plate you want to set for Deposit vehicle')
+                vehicleNameDeposit = 'Manual set'        
+        end
+
+	
+        -- MISC OPTIONS MENU
+        elseif NoName.IsMenuOpened('misc') then
+			if NoName.MenuButton("Keybindings",'keybindings') then
+            elseif NoName.CheckBox('Always Draw Crosshair',Crosshair) then
+                Crosshair = not Crosshair
+            elseif NoName.CheckBox("Show Coordinates",ShowCoords) then
+                ShowCoords = not ShowCoords
+            elseif NoName.MenuButton('Credits','credits') then
+            elseif NoName.Button('---------------------------------','------------------------------------------------------------------------') then
+            elseif NoName.Button('~r~Panic (Kill Menu)') then break
+            end
+			
+		-- ESP OPTIONS MENU
+		elseif NoName.IsMenuOpened('esp') then
+			if NoName.CheckBox("Blips",BlipsEnabled) then
+                ToggleBlips()
+            elseif NoName.CheckBox("Nametags",NametagsEnabled) then
+                NametagsEnabled = not NametagsEnabled
+                tags_plist = GetActivePlayers()
+                ptags = {}
+                for i = 1,#tags_plist do
+                    ptags[i] = CreateFakeMpGamerTag(GetPlayerPed(tags_plist[i]),GetPlayerName(tags_plist[i]),false,false,"",false)
+                    SetMpGamerTagVisibility(ptags[i],0,NametagsEnabled)
+                    SetMpGamerTagVisibility(ptags[i],2,NametagsEnabled)
+					SetMpGamerTagName(ptags[i],"[" .. GetPlayerServerId(tags_plist[i]) .. "] - " .. GetPlayerName(tags_plist[i]))
+                end
+                if not NametagsEnabled then
+                    for i = 1,#ptags do
+                        SetMpGamerTagVisibility(ptags[i],4,0)
+                        SetMpGamerTagVisibility(ptags[i],8,0)
+                    end
+                end
+			end
+
+		-- KEYBINDS MENU
+		elseif NoName.IsMenuOpened('keybindings') then
+			if NoName.CheckBox("Menu Keybind:",0,menuKeybind,menuKeybind) then
+				local key = string.upper(GetKeyboardInput("Input New Key Name (line 1316)"))
+				
+				if Keys[key] then
+					menuKeybind = key
+					ShowInfo("Menu bind has been set to ~g~"..key)
+				else
+					ShowInfo("~r~Key "..key.." is not valid!")
+				end
+			elseif NoName.CheckBox("Fix Vehicle Keybind:",0,fixcarKeybind,fixcarKeybind) then
+				local key = string.upper(GetKeyboardInput("Input New Key Name (line 1316)"))
+				
+				if Keys[key] then
+					fixcarKeybind = key
+					ShowInfo("FixVeh bind has been set to ~g~"..key)
+				else
+					ShowInfo("~r~Key "..key.." is not valid!")
+				end
+			elseif NoName.CheckBox("Heal Self Keybind:",0,healplayerKeybind,healplayerKeybind) then
+				local key = string.upper(GetKeyboardInput("Input New Key Name (line 1316)"))
+				
+				if Keys[key] then
+					healplayerKeybind = key
+					ShowInfo("Heal Self bind has been set to ~g~"..key)
+				else
+					ShowInfo("~r~Key "..key.." is not valid!")
+				end
+			elseif NoName.CheckBox("Teleport Waypoint Keybind:",0,teleportplayerKeybind,teleportplayerKeybind) then
+				local key = string.upper(GetKeyboardInput("Input New Key Name (line 1316)"))
+				
+				if Keys[key] then
+					teleportplayerKeybind = key
+					ShowInfo("Teleport to waypoint bind has been set to ~g~"..key)
+				else
+					ShowInfo("~r~Key "..key.." is not valid!")
+				end
+			end
+       
+        -- CREDITS
+        elseif NoName.IsMenuOpened('credits') then
+            for i = 1,#developers do if NoName.Button(developers[i]) then end end
+        
+        -- OPEN MENU
+        elseif IsDisabledControlJustReleased(0,Keys[menuKeybind]) then NoName.OpenMenu('NoName')-- Change keys in config,not here
+        
+		-- Fix vehicle (keybind)
+		elseif IsDisabledControlJustReleased(0,Keys[fixcarKeybind]) then 
+            if IsPedInAnyVehicle(PlayerPedId(),0) then
+                FixVeh(GetVehiclePedIsIn(PlayerPedId(),0))
+                ShowInfo("∑ Vehicle ~g~Fixed!")
+            else
+                ShowInfo("∑ ~r~Player not in vehicle!")
+            end
+		
+		-- Heal self (keybing)
+		elseif IsDisabledControlJustReleased(0,Keys[healplayerKeybind]) then
+			SetEntityHealth(PlayerPedId(),200.0)
+			ShowInfo("∑ Player ~g~Healed!")
+			
+		-- Teleport Waypoint (keybing)
+		elseif IsDisabledControlJustReleased(0,Keys[teleportplayerKeybind]) then
+			TeleportToWaypoint()
+			ShowInfo("∑ Player ~g~Teleported!")
+			
+		end
+		
+        NoName.Display()
+        
+        -- LOOP HANDLING
+        
+        if Tracking then
+            local coords = GetEntityCoords(GetPlayerPed(TrackedPlayer))
+            SetNewWaypoint(coords.x,coords.y)
+        end
+        
+		if FlingingPlayer then
+			local coords = GetEntityCoords(GetPlayerPed(FlingedPlayer))
+			Citizen.InvokeNative(0xE3AD2BDBAEE269AC,coords.x,coords.y,coords.z,4,1.0,0,1,0.0,1)
+		end
+		
+        if Crosshair then
+            ShowHudComponentThisFrame(14)
+        end
+        
+        if ShowCoords then
+            local pos = GetEntityCoords(PlayerPedId())
+            DrawTxt("~b~X: ~w~" .. round(pos.x,3),0.38,0.03,0.0,0.4)
+            DrawTxt("~b~Y: ~w~" .. round(pos.y,3),0.45,0.03,0.0,0.4)
+            DrawTxt("~b~Z: ~w~" .. round(pos.z,3),0.52,0.03,0.0,0.4)
+        end
+        
+        if not Collision then
+            playerveh = GetVehiclePedIsIn(PlayerPedId(),false)
+            for k in EnumerateVehicles() do
+                SetEntityNoCollisionEntity(k,playerveh,true)
+            end
+            for k in EnumerateObjects() do
+                SetEntityNoCollisionEntity(k,playerveh,true)
+            end
+            for k in EnumeratePeds() do
+                SetEntityNoCollisionEntity(k,playerveh,true)
+            end
+        end
+        
+        
+        
+        if NametagsEnabled then
+            tags_plist = GetActivePlayers()
+            for i = 1,#tags_plist do
+                if NetworkIsPlayerTalking(tags_plist[i]) then
+                    SetMpGamerTagVisibility(ptags[i],4,1)
+                else
+                    SetMpGamerTagVisibility(ptags[i],4,0)
+                end
+                
+                if IsPedInAnyVehicle(GetPlayerPed(tags_plist[i])) and GetSeatPedIsIn(GetPlayerPed(tags_plist[i])) == 0 then
+                    SetMpGamerTagVisibility(ptags[i],8,1)
+                else
+                    SetMpGamerTagVisibility(ptags[i],8,0)
+                end
+            
+            end
+        end
+        
+        Wait(0)
+    end
+end)
